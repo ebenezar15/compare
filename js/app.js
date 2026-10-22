@@ -1,0 +1,408 @@
+/* Theology Compass — rendering and interaction. Plain DOM, no framework. */
+(function () {
+  "use strict";
+  const D = TC.doctrines, L = TC.lenses, I = TC.influences;
+  const byId = Object.fromEntries(D.map(d => [d.id, d]));
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const NS = "http://www.w3.org/2000/svg";
+
+  // Doctrine colours (mid-tone so they read on light and dark grounds) and short labels
+  const DC = { evangelical: "#d0662f", psa: "#c23b4a", holiness: "#3c8fd0", reformation: "#7b5cc4", sola: "#a0782c",
+    arminian: "#2e9c72", progressive: "#4aa3a0", sovereignty: "#8a6bb0", hell: "#b4552c", futurism: "#c79a1e" };
+  const SHORT = { evangelical: "Evangelicalism", psa: "Penal Substitution", holiness: "Holiness", reformation: "Reformation",
+    sola: "Sola Scriptura", arminian: "Arminian-Wesleyan", progressive: "Progressive Sanct.", sovereignty: "Sovereignty in Suffering",
+    hell: "Traditional Hell", futurism: "Futurism" };
+
+  const state = { view: "overview", doc: "psa", sub: "overview", lensFilter: "all", tlFilter: "all", flowDoc: "psa", tree: "hell", treeNode: null, trail: [], mapSel: null };
+
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* storage unavailable */ } }
+  };
+
+  /* ---------- Shared scale: eras get weighted widths so dense centuries stay readable ---------- */
+  const ERA_W = [0.8, 2, 1.4, 1.6, 1.3, 2.6];
+  function yearScale(x0, x1) {
+    const total = ERA_W.reduce((a, b) => a + b, 0);
+    const edges = []; let acc = x0;
+    TC.eras.forEach((e, i) => { const w = (x1 - x0) * ERA_W[i] / total; edges.push([acc, acc + w]); acc += w; });
+    const f = y => {
+      y = Math.max(TC.eras[0].from, Math.min(2026, y));
+      for (let i = 0; i < TC.eras.length; i++) {
+        const e = TC.eras[i];
+        if (y <= e.to || i === TC.eras.length - 1) return edges[i][0] + (y - e.from) / (e.to - e.from) * (edges[i][1] - edges[i][0]);
+      }
+    };
+    f.edges = edges; return f;
+  }
+
+  function strengthBar(s, c) {
+    return `<span class="strength" style="--c:${c}" title="Strength of challenge: ${s} of 3">${[1, 2, 3].map(i => `<i class="${i <= s ? "on" : ""}"></i>`).join("")}</span>`;
+  }
+  const refs = arr => arr && arr.length ? `<div class="refs">${arr.map(r => `<span>${esc(r)}</span>`).join("")}</div>` : "";
+  const lensPill = k => `<span class="pill lens-pill" style="background:${L[k].color}">${esc(L[k].short)}</span>`;
+
+  /* ---------- Overview ---------- */
+  function compassSVG() {
+    const W = 440, C = W / 2, R1 = 172, R2 = 78;
+    const dPos = D.map((d, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / D.length; return [C + R1 * Math.cos(a), C + R1 * Math.sin(a), a]; });
+    const lk = Object.keys(L);
+    const lPos = lk.map((k, i) => { const a = -Math.PI / 2 + (i + .5) * 2 * Math.PI / lk.length; return [C + R2 * Math.cos(a), C + R2 * Math.sin(a)]; });
+    let lines = "";
+    D.forEach((d, i) => d.responses.forEach(r => {
+      if (r.s < 2) return;
+      const j = lk.indexOf(r.lens);
+      lines += `<line x1="${lPos[j][0]}" y1="${lPos[j][1]}" x2="${dPos[i][0]}" y2="${dPos[i][1]}" stroke="${L[r.lens].color}" stroke-width="${r.s === 3 ? 2.2 : 1.2}" opacity=".55"/>`;
+    }));
+    const dNodes = D.map((d, i) => {
+      const [x, y, a] = dPos[i]; const lx = C + (R1 + 18) * Math.cos(a), ly = C + (R1 + 18) * Math.sin(a);
+      const anchor = Math.abs(Math.cos(a)) < .25 ? "middle" : Math.cos(a) > 0 ? "start" : "end";
+      return `<circle cx="${x}" cy="${y}" r="8" fill="${DC[d.id]}"/><text x="${lx}" y="${ly + 4}" font-size="13" font-weight="700" text-anchor="${anchor}">${esc(SHORT[d.id])}</text>`;
+    }).join("");
+    const lNodes = lk.map((k, i) => `<circle cx="${lPos[i][0]}" cy="${lPos[i][1]}" r="11" fill="${L[k].color}"><title>${esc(L[k].name)}</title></circle>`).join("");
+    return `<svg class="compass" viewBox="-120 -14 680 468" role="img" aria-label="Compass diagram: ten traditional doctrines on the outer ring, seven alternative lenses at the centre, lines show strong challenges">
+      <circle cx="${C}" cy="${C}" r="${R1}" fill="none" stroke="var(--line)" stroke-dasharray="3 5"/>
+      <circle cx="${C}" cy="${C}" r="${R2}" fill="none" stroke="var(--line)"/>
+      ${lines}${dNodes}${lNodes}
+      <text x="${C}" y="${C - 2}" text-anchor="middle" font-size="11" font-weight="800" letter-spacing="1.5">ALTERNATIVE</text>
+      <text x="${C}" y="${C + 12}" text-anchor="middle" font-size="11" font-weight="800" letter-spacing="1.5">LENSES</text>
+    </svg>`;
+  }
+
+  function lifespanSVG() {
+    const W = 1120, left = 200, right = 20, rowH = 34, top = 40, H = top + D.length * rowH + 30;
+    const X = yearScale(left, W - right);
+    let s = `<svg class="tl-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="When each doctrine took shape, from early roots to formal statement to today">`;
+    TC.eras.forEach((e, i) => {
+      const [a, b] = X.edges[i];
+      s += `<rect x="${a}" y="${top - 26}" width="${b - a}" height="${H - top}" fill="${i % 2 ? "var(--surface-2)" : "none"}" opacity=".6"/>`;
+      s += `<text x="${(a + b) / 2}" y="${top - 10}" text-anchor="middle" font-size="11" font-weight="700" class="chart-muted">${e.name.toUpperCase()}</text>`;
+      s += `<text x="${a + 3}" y="${H - 8}" font-size="10.5" class="chart-muted">${e.from}</text>`;
+    });
+    D.forEach((d, i) => {
+      const y = top + i * rowH + rowH / 2, c = DC[d.id];
+      s += `<text x="${left - 12}" y="${y + 4}" text-anchor="end" font-size="12.5" font-weight="700" class="chart-ink">${esc(SHORT[d.id])}</text>`;
+      s += `<line x1="${X(d.seeds)}" y1="${y}" x2="${X(d.span[0])}" y2="${y}" stroke="${c}" stroke-width="2" stroke-dasharray="3 4"/>`;
+      s += `<rect x="${X(d.span[0])}" y="${y - 7}" width="${X(d.span[1]) - X(d.span[0])}" height="14" rx="7" fill="${c}" opacity=".85"/>`;
+      s += `<circle cx="${X(d.seeds)}" cy="${y}" r="4" fill="var(--surface)" stroke="${c}" stroke-width="2"><title>Early roots c. ${d.seeds}</title></circle>`;
+      s += `<text x="${X(d.span[0]) + 6}" y="${y + 4}" font-size="10.5" font-weight="800" fill="#fff">${d.span[0]}</text>`;
+    });
+    return s + `</svg>`;
+  }
+
+  function renderOverview() {
+    const fathers = D.reduce((n, d) => n + d.fathers.length, 0);
+    const tensions = D.reduce((n, d) => n + d.tensions.length, 0);
+    $("#v-overview").innerHTML = `
+      <div class="hero">
+        <div>
+          <div class="eyebrow">Interactive study guide</div>
+          <h1>Ten Western doctrines, <span>weighed against Scripture</span></h1>
+          <p class="lede">Trace where each teaching came from, the texts and church fathers behind it, the philosophical and pagan ideas that shaped it, and the contradictions critics find. Then hear the case from relational, Christus Victor, reconciliation and victorious-eschatology readers, and the defenders' reply.</p>
+          <div class="stats">
+            <div class="stat"><b>${D.length}</b><span>doctrines</span></div>
+            <div class="stat"><b>${Object.keys(L).length}</b><span>alternative lenses</span></div>
+            <div class="stat"><b>${fathers}</b><span>church-father views</span></div>
+            <div class="stat"><b>${tensions}</b><span>scriptural tensions</span></div>
+            <div class="stat"><b>${TC.texts.length}</b><span>contested texts</span></div>
+          </div>
+        </div>
+        ${compassSVG()}
+      </div>
+      <div class="stack">
+        <div class="section-head"><div class="eyebrow">The doctrines examined</div><h2>Pick a doctrine to open its dossier</h2></div>
+        <div class="grid">${D.map(d => `
+          <button class="card" data-open="${d.id}" type="button">
+            <span class="fam">${esc(d.family)} · from ${d.span[0]}</span>
+            <h3><span class="lens-dot" style="background:${DC[d.id]}"></span>${esc(d.name)}</h3>
+            <p>${esc(d.summary)}</p>
+            <div class="pills">${[...new Set(d.responses.filter(r => r.s >= 2).map(r => r.lens))].map(lensPill).join("")}</div>
+          </button>`).join("")}
+        </div>
+        <div class="section-head" style="margin-top:24px"><div class="eyebrow">The alternative lenses</div><h2>The views that answer them</h2></div>
+        <div class="lens-grid">${Object.entries(L).map(([k, l]) => `
+          <div class="card lens-card" style="--c:${l.color}">
+            <h3><span class="lens-dot" style="background:${l.color}"></span>${esc(l.name)}</h3>
+            <p style="-webkit-line-clamp:unset">${esc(l.thesis)}</p>
+            <div class="who"><b>Voices:</b> ${esc(l.proponents)}</div>
+            ${refs(l.texts)}
+          </div>`).join("")}
+        </div>
+        <div class="section-head" style="margin-top:24px"><div class="eyebrow">Formation</div><h2>When each doctrine took shape</h2>
+          <p class="muted">Dashed line: earliest roots. Solid bar: from formal statement to today. Eras are scaled by how much happened in them, not by years.</p></div>
+        <div class="panel scroll-x">${lifespanSVG()}</div>
+        <p class="note">This guide presents critiques of the doctrines as their critics make them and gives each tradition's response. Church-father attributions summarise mainstream scholarship; where scholars disagree (for example on Gregory of Nazianzus, Irenaeus on hell, or Aulén's history), the text says so.</p>
+      </div>`;
+  }
+
+  /* ---------- Explorer ---------- */
+  const SUBS = [["overview", "Overview"], ["history", "Roots & history"], ["scripture", "Key scriptures"], ["influences", "Pagan & cultural roots"],
+    ["fathers", "Church fathers"], ["tensions", "Contradictions"], ["responses", "Alternative answers"], ["rebuttal", "Defenders reply"]];
+
+  function renderExplorer() {
+    const d = byId[state.doc];
+    const list = D.map(x => `<button class="doc-btn" type="button" data-doc="${x.id}" aria-current="${x.id === d.id}"><small>${esc(x.family)}</small><span><span class="lens-dot" style="background:${DC[x.id]}"></span>${esc(SHORT[x.id])}</span></button>`).join("");
+    let body = "";
+    switch (state.sub) {
+      case "overview":
+        body = `<div class="prose"><p class="lede" style="color:var(--ink)">${esc(d.summary)}</p><h3>Core claims</h3><ul class="claims">${d.claims.map(c => `<li>${esc(c)}</li>`).join("")}</ul>
+          <h3>At a glance</h3>
+          <div class="pills"><span class="pill">${d.tensions.length} tensions</span><span class="pill">${d.fathers.length} fathers</span><span class="pill">${d.influences.length} outside influences</span><span class="pill">${d.responses.length} alternative answers</span></div></div>`;
+        break;
+      case "history":
+        body = `<div class="prose"><p>${esc(d.roots)}</p><h3>Formation timeline</h3><ol class="mini-tl">${d.timeline.map(e => `<li><b>${e.y}</b>${esc(e.t)}</li>`).join("")}</ol></div>`;
+        break;
+      case "scripture":
+        body = `<div class="grid">${d.scriptures.map(s => `<div class="card"><span class="ref">${esc(s.ref)}</span><p style="-webkit-line-clamp:unset;color:var(--ink)">${esc(s.use)}</p></div>`).join("")}</div>
+          <p class="note" style="margin-top:16px">These are the texts the doctrine's defenders rely on. See Contradictions and the Contested texts view for alternative readings.</p>`;
+        break;
+      case "influences":
+        body = `<div class="grid">${d.influences.map(k => `<div class="card infl"><span class="kind">${esc(I[k].kind)} · ${esc(I[k].era)}</span><h3>${esc(I[k].name)}</h3><p style="-webkit-line-clamp:unset">${esc(I[k].desc)}</p></div>`).join("")}</div>
+          <p class="note" style="margin-top:16px">Influence is not proof of error: Christians have always borrowed language from their culture (Paul quotes Greek poets in Acts 17:28). The question critics raise is whether a borrowed idea changed the biblical picture.</p>`;
+        break;
+      case "fathers":
+        body = `<div class="father-grid">${d.fathers.map(f => `<div class="card father"><span class="date">${esc(f.date)}</span><h3>${esc(f.name)}</h3><p style="-webkit-line-clamp:unset">${esc(f.held)}</p></div>`).join("")}</div>`;
+        break;
+      case "tensions":
+        body = `<div class="stack" style="gap:12px">${d.tensions.map(t => `<div class="card tension"><h4>${esc(t.title)}</h4><p style="-webkit-line-clamp:unset;color:var(--ink)">${esc(t.text)}</p>${refs(t.refs)}</div>`).join("")}</div>`;
+        break;
+      case "responses": {
+        const lenses = [...new Set(d.responses.map(r => r.lens))];
+        const shown = d.responses.filter(r => state.lensFilter === "all" || r.lens === state.lensFilter);
+        body = `<div class="filter-row"><button class="chip" type="button" data-lens="all" aria-pressed="${state.lensFilter === "all"}">All lenses</button>${lenses.map(k => `<button class="chip" type="button" data-lens="${k}" aria-pressed="${state.lensFilter === k}"><span class="lens-dot" style="background:${L[k].color}"></span>${esc(L[k].short)}</button>`).join("")}</div>
+          <div class="stack" style="gap:12px">${shown.length ? shown.map(r => `<div class="card resp" style="--c:${L[r.lens].color}"><div class="resp-top"><h3>${esc(L[r.lens].name)}</h3>${strengthBar(r.s, L[r.lens].color)}</div><p style="-webkit-line-clamp:unset;color:var(--ink)">${esc(r.arg)}</p>${refs(r.refs)}</div>`).join("") : `<p class="muted">This lens has no direct answer recorded for this doctrine. Choose another lens.</p>`}</div>`;
+        break;
+      }
+      case "rebuttal":
+        body = `<div class="card rebut"><div class="eyebrow">How defenders answer the critiques</div><p class="quote" style="-webkit-line-clamp:unset;color:var(--ink)">${esc(d.rebuttal)}</p></div>`;
+        break;
+    }
+    $("#v-explorer").innerHTML = `<div class="explorer">
+      <nav class="doc-list" aria-label="Doctrines">${list}</nav>
+      <div style="min-width:0">
+        <div class="doc-head"><span class="eyebrow" style="color:${DC[d.id]}">${esc(d.family)}</span><h2>${esc(d.name)}</h2></div>
+        <div class="subtabs" role="tablist">${SUBS.map(([k, n]) => `<button class="subtab" role="tab" type="button" data-sub="${k}" aria-selected="${state.sub === k}">${n}</button>`).join("")}</div>
+        ${body}
+      </div></div>`;
+  }
+
+  /* ---------- Influence map ---------- */
+  function renderMap() {
+    const ik = Object.keys(I), lk = Object.keys(L);
+    const W = 1100, nodeW = 210, nodeH = 30, gap = 10, top = 40;
+    const colX = [20, (W - nodeW) / 2, W - nodeW - 20];
+    const H = top + Math.max(ik.length, D.length, lk.length) * (nodeH + gap) + 10;
+    const yFor = (i, n) => top + (H - top - n * (nodeH + gap)) / 2 + i * (nodeH + gap);
+    const pos = {};
+    ik.forEach((k, i) => pos["i:" + k] = [colX[0], yFor(i, ik.length)]);
+    D.forEach((d, i) => pos["d:" + d.id] = [colX[1], yFor(i, D.length)]);
+    lk.forEach((k, i) => pos["l:" + k] = [colX[2], yFor(i, lk.length)]);
+    const edges = [];
+    D.forEach(d => {
+      d.influences.forEach(k => edges.push({ a: "i:" + k, b: "d:" + d.id, c: "var(--warn)", w: 1.6 }));
+      d.responses.forEach(r => edges.push({ a: "d:" + d.id, b: "l:" + r.lens, c: L[r.lens].color, w: r.s * .9 + .4 }));
+    });
+    const sel = state.mapSel;
+    const hot = new Set(); const hotE = new Set();
+    if (sel) { hot.add(sel); edges.forEach((e, i) => { if (e.a === sel || e.b === sel) { hotE.add(i); hot.add(e.a); hot.add(e.b); } }); }
+    let svg = `<svg class="map-svg ${sel ? "dim" : ""}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Network map linking outside influences to doctrines and doctrines to the lenses that challenge them">`;
+    [["Outside influences", 0], ["Western doctrines", 1], ["Alternative lenses", 2]].forEach(([t, i]) => svg += `<text x="${colX[i] + nodeW / 2}" y="20" text-anchor="middle" font-size="12" font-weight="800" letter-spacing="1.2" class="chart-muted">${t.toUpperCase()}</text>`);
+    edges.forEach((e, i) => {
+      const [ax, ay] = pos[e.a], [bx, by] = pos[e.b];
+      const x1 = ax + nodeW, y1 = ay + nodeH / 2, x2 = bx, y2 = by + nodeH / 2, mx = (x1 + x2) / 2;
+      svg += `<path class="edge ${hotE.has(i) ? "hot" : ""}" d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}" stroke="${e.c}" stroke-width="${e.w}"/>`;
+    });
+    const node = (key, label, color) => {
+      const [x, y] = pos[key];
+      return `<g class="node ${hot.has(key) ? "hot" : ""}" data-node="${key}" tabindex="0" role="button" aria-label="${esc(label)}">
+        <rect x="${x}" y="${y}" width="${nodeW}" height="${nodeH}" rx="8" fill="var(--surface)" stroke="${color}"/>
+        <rect x="${x}" y="${y}" width="6" height="${nodeH}" rx="3" fill="${color}"/>
+        <text x="${x + 14}" y="${y + 19}" class="chart-ink">${esc(label.length > 30 ? label.slice(0, 29) + "…" : label)}</text></g>`;
+    };
+    ik.forEach(k => svg += node("i:" + k, I[k].name, "var(--warn)"));
+    D.forEach(d => svg += node("d:" + d.id, SHORT[d.id], DC[d.id]));
+    lk.forEach(k => svg += node("l:" + k, L[k].name, L[k].color));
+    svg += `</svg>`;
+
+    let detail = `<p class="muted">Select any box to trace its connections.</p>`;
+    if (sel) {
+      const [t, k] = sel.split(":");
+      if (t === "i") detail = `<span class="eyebrow">${esc(I[k].kind)} · ${esc(I[k].era)}</span><h3>${esc(I[k].name)}</h3><p>${esc(I[k].desc)}</p><div class="pills">${D.filter(d => d.influences.includes(k)).map(d => `<span class="pill">${esc(SHORT[d.id])}</span>`).join("")}</div>`;
+      if (t === "d") { const d = byId[k]; detail = `<span class="eyebrow">${esc(d.family)}</span><h3>${esc(d.name)}</h3><p>${esc(d.summary)}</p><div><button class="ghost" type="button" data-open="${d.id}">Open dossier</button></div>`; }
+      if (t === "l") detail = `<span class="eyebrow">Alternative lens</span><h3>${esc(L[k].name)}</h3><p>${esc(L[k].thesis)}</p>${refs(L[k].texts)}`;
+    }
+    $("#v-map").innerHTML = `<div class="section-head"><div class="eyebrow">Visual map</div><h2>Where the ideas came from, and who answers them</h2>
+      <p class="lede">Left: philosophical, mythic, legal and cultural streams that fed each doctrine. Right: the lenses that challenge it, with thicker lines for stronger challenges.</p></div>
+      <div class="panel scroll-x">${svg}</div>
+      <div class="legend"><span><i style="background:var(--warn)"></i>Shaped by (influence)</span>${Object.values(L).map(l => `<span><i style="background:${l.color}"></i>${esc(l.short)}</span>`).join("")}</div>
+      <div class="card" style="margin-top:16px" aria-live="polite">${detail}</div>`;
+  }
+
+  /* ---------- Timeline ---------- */
+  function allEvents() {
+    const ev = [];
+    D.forEach(d => d.timeline.forEach(e => ev.push({ y: e.y, t: e.t, d: d.id })));
+    return ev.sort((a, b) => a.y - b.y);
+  }
+  function renderTimeline() {
+    const ev = allEvents().filter(e => state.tlFilter === "all" || e.d === state.tlFilter);
+    const W = 1120, left = 200, right = 20, rowH = 26, top = 36, H = top + D.length * rowH + 28;
+    const X = yearScale(left, W - right);
+    let svg = `<svg class="tl-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Timeline of key events for every doctrine">`;
+    TC.eras.forEach((e, i) => {
+      const [a, b] = X.edges[i];
+      svg += `<rect x="${a}" y="${top - 22}" width="${b - a}" height="${H - top + 2}" fill="${i % 2 ? "var(--surface-2)" : "none"}" opacity=".6"/>`;
+      svg += `<text x="${(a + b) / 2}" y="${top - 8}" text-anchor="middle" font-size="11" font-weight="700" class="chart-muted">${e.name.toUpperCase()}</text>`;
+      svg += `<text x="${a + 3}" y="${H - 6}" font-size="10.5" class="chart-muted">${e.from}</text>`;
+    });
+    D.forEach((d, i) => {
+      const y = top + i * rowH + rowH / 2, on = state.tlFilter === "all" || state.tlFilter === d.id;
+      svg += `<text x="${left - 12}" y="${y + 4}" text-anchor="end" font-size="12" font-weight="700" class="${on ? "chart-ink" : "chart-muted"}">${esc(SHORT[d.id])}</text>`;
+      svg += `<line x1="${left}" y1="${y}" x2="${W - right}" y2="${y}" class="chart-line" stroke-width="1"/>`;
+      d.timeline.forEach((e, j) => svg += `<circle class="tl-dot" data-ev="${d.id}-${j}" cx="${X(e.y)}" cy="${y}" r="6" fill="${DC[d.id]}" opacity="${on ? 1 : .2}"><title>${e.y}: ${esc(e.t)}</title></circle>`);
+    });
+    svg += `</svg>`;
+    const groups = TC.eras.map(era => ({ era, items: ev.filter(e => e.y >= era.from && (e.y < era.to || era.to === 2026)) })).filter(g => g.items.length);
+    $("#v-timeline").innerHTML = `<div class="section-head"><div class="eyebrow">Timeline</div><h2>Two thousand years of formation</h2>
+      <p class="lede">Every dot is a turning point. Select a dot to jump to it, or filter by doctrine.</p></div>
+      <div class="filter-row"><button class="chip" type="button" data-tl="all" aria-pressed="${state.tlFilter === "all"}">All doctrines</button>${D.map(d => `<button class="chip" type="button" data-tl="${d.id}" aria-pressed="${state.tlFilter === d.id}"><span class="lens-dot" style="background:${DC[d.id]}"></span>${esc(SHORT[d.id])}</button>`).join("")}</div>
+      <div class="panel scroll-x">${svg}</div>
+      <div class="tl-list">${groups.map(g => `<div class="tl-era"><h3>${g.era.name} <small>${g.era.from}–${g.era.to === 2026 ? "today" : g.era.to}</small></h3>
+        ${g.items.map(e => { const j = byId[e.d].timeline.findIndex(x => x.y === e.y && x.t === e.t); return `<div class="tl-item" id="ev-${e.d}-${j}"><span class="yr">${e.y}</span><span>${esc(e.t)}<span class="tag" style="color:${DC[e.d]}">${esc(SHORT[e.d])}</span></span></div>`; }).join("")}</div>`).join("")}</div>`;
+  }
+
+  /* ---------- Flowcharts & pathfinder ---------- */
+  const arrow = `<div class="arrow" aria-hidden="true"><svg viewBox="0 0 16 26"><path d="M8 2 V22 M3 17 L8 23 L13 17"/></svg></div>`;
+  function chain(steps, cls, pressure) {
+    return `<div class="flow ${cls}">${steps.map((s, i) => `${i ? arrow : ""}<div class="step ${i === pressure ? "pressure" : ""}"><span class="n">${i + 1}</span><span>${esc(s)}</span></div>`).join("")}</div>`;
+  }
+  function renderFlow() {
+    const d = byId[state.flowDoc], lg = d.logic, lens = L[lg.altLens];
+    const t = TC.trees[state.tree];
+    const nodeKey = state.treeNode || t.start, node = t.nodes[nodeKey];
+    let treeBody;
+    if (node.view) {
+      const c = node.lens ? L[node.lens].color : "var(--accent)";
+      treeBody = `<div class="card result" style="--c:${c}"><span class="eyebrow">Where your answers lead</span><h3>${esc(node.view)}</h3><p style="-webkit-line-clamp:unset">${esc(node.text)}</p>${node.lens ? `<div class="pills">${lensPill(node.lens)}</div>` : ""}</div>`;
+    } else {
+      treeBody = `<p class="q">${esc(node.q)}</p><div class="answers">${node.opts.map(([a, n]) => `<button class="ans" type="button" data-next="${n}" data-a="${esc(a)}">${esc(a)}</button>`).join("")}</div>`;
+    }
+    $("#v-flow").innerHTML = `<div class="section-head"><div class="eyebrow">Flowcharts</div><h2>Follow the logic, step by step</h2>
+      <p class="lede">Each doctrine's chain of reasoning beside the alternative chain. The red step is where critics say Scripture pushes back hardest.</p></div>
+      <div class="filter-row">${D.map(x => `<button class="chip" type="button" data-flow="${x.id}" aria-pressed="${x.id === d.id}">${esc(SHORT[x.id])}</button>`).join("")}</div>
+      <div class="panel"><div class="flow-wrap">
+        <div class="flow-col"><h3><span class="lens-dot" style="background:${DC[d.id]}"></span>${esc(d.name)}</h3>${chain(lg.trad, "", lg.pressure)}</div>
+        <div class="flow-col alt" style="--c:${lens.color}"><h3><span class="lens-dot" style="background:${lens.color}"></span>${esc(lens.name)}</h3>${chain(lg.alt, "alt", -1)}</div>
+      </div>
+      <div class="card tension" style="margin-top:20px"><span class="eyebrow">At the tension point</span><h4>${esc(d.tensions[0].title)}</h4><p style="-webkit-line-clamp:unset;color:var(--ink)">${esc(d.tensions[0].text)}</p>${refs(d.tensions[0].refs)}</div></div>
+
+      <div class="section-head" style="margin-top:40px"><div class="eyebrow">Pathfinder</div><h2>Answer the questions, see where you land</h2></div>
+      <div class="filter-row">${Object.entries(TC.trees).map(([k, v]) => `<button class="chip" type="button" data-tree="${k}" aria-pressed="${k === state.tree}">${esc(v.title)}</button>`).join("")}</div>
+      <div class="panel tree">
+        <div class="trail">${state.trail.length ? state.trail.map(a => `<b>${esc(a)}</b>`).join(" → ") : "Start here"}</div>
+        ${treeBody}
+        ${state.trail.length ? `<div><button class="ghost" type="button" data-reset>Start again</button></div>` : ""}
+      </div>`;
+  }
+
+  /* ---------- Matrix ---------- */
+  function renderMatrix() {
+    const lk = Object.keys(L);
+    const rows = D.map(d => `<tr><th scope="row"><span class="lens-dot" style="background:${DC[d.id]}"></span>${esc(SHORT[d.id])}</th>${lk.map(k => {
+      const r = d.responses.find(x => x.lens === k);
+      if (!r) return `<td><span class="cell empty">—</span></td>`;
+      return `<td><button class="cell" type="button" data-cell="${d.id}|${k}" title="${esc(L[k].name)} on ${esc(d.name)}: strength ${r.s} of 3" style="background:color-mix(in srgb, ${L[k].color} ${18 + r.s * 24}%, var(--surface));color:${r.s >= 2 ? "#fff" : "var(--ink)"}">${"●".repeat(r.s)}</button></td>`;
+    }).join("")}</tr>`).join("");
+    $("#v-matrix").innerHTML = `<div class="section-head"><div class="eyebrow">Comparison matrix</div><h2>Which lens challenges which doctrine, and how hard</h2>
+      <p class="lede">Dots show how directly a lens answers a doctrine (one: indirect, three: a head-on alternative). Select a cell to read the argument.</p></div>
+      <div class="panel scroll-x"><table class="matrix"><thead><tr><th></th>${lk.map(k => `<th scope="col"><span class="lens-dot" style="background:${L[k].color}"></span>${esc(L[k].short)}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+
+  /* ---------- Contested texts ---------- */
+  function renderTexts() {
+    $("#v-texts").innerHTML = `<div class="section-head"><div class="eyebrow">Contested texts</div><h2>The same verse, read two ways</h2>
+      <p class="lede">The key verses in each debate, with the traditional reading and the alternative reading side by side.</p></div>
+      <div class="searchbar"><input id="q" type="search" placeholder="Search a verse or word, e.g. Matthew 25, aionios, rapture" aria-label="Search contested texts">
+        <select id="topic" aria-label="Filter by doctrine"><option value="all">All doctrines</option>${D.map(d => `<option value="${d.id}">${esc(SHORT[d.id])}</option>`).join("")}</select></div>
+      <div id="text-results" class="stack" style="gap:12px"></div>`;
+    const draw = () => {
+      const q = $("#q").value.trim().toLowerCase(), tp = $("#topic").value;
+      const hits = TC.texts.filter(t => (tp === "all" || t.topic === tp) && (!q || (t.ref + t.trad + t.alt).toLowerCase().includes(q)));
+      $("#text-results").innerHTML = hits.length ? hits.map(t => `<div class="card"><div class="resp-top"><h3 class="ref">${esc(t.ref)}</h3><div class="pills"><span class="pill">${esc(SHORT[t.topic])}</span>${lensPill(t.lens)}</div></div>
+        <div class="versus"><div><span class="lbl" style="color:${DC[t.topic]}">Traditional reading</span><p>${esc(t.trad)}</p></div><div><span class="lbl" style="color:${L[t.lens].color}">Alternative reading</span><p>${esc(t.alt)}</p></div></div></div>`).join("")
+        : `<p class="muted">No texts match. Try a book name such as "Romans" or clear the filter.</p>`;
+    };
+    $("#q").addEventListener("input", draw); $("#topic").addEventListener("change", draw); draw();
+  }
+
+  /* ---------- Spectrums ---------- */
+  function renderSpectrum() {
+    $("#v-spectrum").innerHTML = `<div class="section-head"><div class="eyebrow">Spectrums</div><h2>Where the fathers and modern voices stand</h2>
+      <p class="lede">Each line runs between two poles. Gold: church fathers and historic figures. Blue: modern theologians. Dark: schools of thought. Positions are approximate.</p></div>
+      <div class="stack">${TC.spectra.map(sp => `<div class="panel spec"><h3>${esc(sp.name)}</h3>
+        <div class="spec-ends"><span>${esc(sp.left)}</span><span>${esc(sp.right)}</span></div>
+        <div class="spec-track" style="height:72px"><div class="spec-bar" style="top:33px"></div>${sp.points.map((p, i) => `<span class="spec-pt ${p.kind}" style="left:${p.x}%;top:${i % 2 ? 40 : 10}px" title="${esc(p.label)}">${i + 1}</span>`).join("")}</div>
+        <div class="spec-key">${sp.points.map((p, i) => `<span><b>${i + 1}</b>${esc(p.label)}</span>`).join("")}</div></div>`).join("")}</div>`;
+  }
+
+  /* ---------- Sources ---------- */
+  function renderSources() {
+    $("#v-sources").innerHTML = `<div class="section-head"><div class="eyebrow">Sources</div><h2>Reading on every side</h2>
+      <p class="lede">Scholarship and primary texts used for this guide, including critics of the alternative views, so you can check the arguments yourself.</p></div>
+      <div class="sources-list">${TC.sources.map(g => `<div class="panel"><h3>${esc(g.group)}</h3><ul>${g.items.map(s => `<li><a href="${esc(s.u)}" target="_blank" rel="noopener">${esc(s.t)}</a></li>`).join("")}</ul></div>`).join("")}</div>`;
+  }
+
+  /* ---------- Routing ---------- */
+  const VIEWS = { overview: renderOverview, explorer: renderExplorer, map: renderMap, timeline: renderTimeline, flow: renderFlow, matrix: renderMatrix, texts: renderTexts, spectrum: renderSpectrum, sources: renderSources };
+  function show(view, push) {
+    state.view = view;
+    document.querySelectorAll(".view").forEach(v => v.hidden = v.id !== "v-" + view);
+    document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.view === view));
+    VIEWS[view]();
+    if (push) { try { history.replaceState(null, "", "#" + (view === "explorer" ? state.doc : view)); } catch (e) { /* ignore */ } }
+  }
+  function openDoc(id, sub) { state.doc = id; state.sub = sub || "overview"; state.lensFilter = "all"; show("explorer", true); window.scrollTo({ top: 0 }); }
+
+  document.addEventListener("click", e => {
+    const t = e.target.closest("[data-view],[data-open],[data-doc],[data-sub],[data-lens],[data-tl],[data-flow],[data-tree],[data-next],[data-reset],[data-cell],[data-node],.tl-dot,[data-scheme-btn]");
+    if (!t) return;
+    const ds = t.dataset;
+    if (ds.view) show(ds.view, true);
+    else if (ds.open) openDoc(ds.open);
+    else if (ds.doc) { state.doc = ds.doc; state.lensFilter = "all"; renderExplorer(); try { history.replaceState(null, "", "#" + ds.doc); } catch (err) { /* ignore */ } }
+    else if (ds.sub) { state.sub = ds.sub; renderExplorer(); }
+    else if (ds.lens) { state.lensFilter = ds.lens; renderExplorer(); }
+    else if (ds.tl) { state.tlFilter = ds.tl; renderTimeline(); }
+    else if (ds.flow) { state.flowDoc = ds.flow; renderFlow(); }
+    else if (ds.tree) { state.tree = ds.tree; state.treeNode = null; state.trail = []; renderFlow(); }
+    else if (ds.next) { state.trail.push(ds.a); state.treeNode = ds.next; renderFlow(); }
+    else if ("reset" in ds) { state.treeNode = null; state.trail = []; renderFlow(); }
+    else if (ds.cell) { const [d, k] = ds.cell.split("|"); openDoc(d, "responses"); state.lensFilter = k; renderExplorer(); }
+    else if (ds.node) { state.mapSel = state.mapSel === ds.node ? null : ds.node; renderMap(); }
+    else if (t.classList.contains("tl-dot")) {
+      const row = document.getElementById("ev-" + t.dataset.ev);
+      if (row) { row.scrollIntoView({ behavior: "smooth", block: "center" }); row.classList.add("flash"); setTimeout(() => row.classList.remove("flash"), 1600); }
+    }
+    else if (ds.schemeBtn) setScheme(ds.schemeBtn);
+  });
+  document.addEventListener("keydown", e => {
+    const n = e.target.closest && e.target.closest("[data-node]");
+    if (n && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); n.dispatchEvent(new MouseEvent("click", { bubbles: true })); }
+  });
+
+  /* ---------- Colour schemes ---------- */
+  const SCHEMES = [["auto", "Follow device", "linear-gradient(135deg,#f3f5f8 50%,#11151d 50%)"], ["vellum", "Vellum", "linear-gradient(135deg,#f3f5f8 55%,#2c46a8 55%)"],
+    ["jordan", "Jordan", "linear-gradient(135deg,#eef6f5 55%,#0f7a70 55%)"], ["olive", "Olive", "linear-gradient(135deg,#f2f3ea 55%,#55702a 55%)"],
+    ["nave", "Nave", "linear-gradient(135deg,#12122a 55%,#b9a6ff 55%)"], ["icon", "Icon", "linear-gradient(135deg,#1d0f10 55%,#e6b54a 55%)"], ["ember", "Ember", "linear-gradient(135deg,#16130f 55%,#f08a3c 55%)"]];
+  function setScheme(s) {
+    document.documentElement.setAttribute("data-scheme", s);
+    document.querySelectorAll("[data-scheme-btn]").forEach(b => b.setAttribute("aria-pressed", b.dataset.schemeBtn === s));
+    store.set("tc-scheme", s);
+  }
+  $("#swatches").innerHTML = SCHEMES.map(([k, n, g]) => `<button class="sw" type="button" data-scheme-btn="${k}" title="${n}" aria-label="Colour scheme: ${n}" aria-pressed="false" style="background:${g}"></button>`).join("");
+  setScheme(store.get("tc-scheme") || "auto");
+
+  const h = (location.hash || "").slice(1);
+  if (byId[h]) { state.doc = h; show("explorer"); } else show(VIEWS[h] ? h : "overview");
+})();

@@ -245,3 +245,28 @@ footer { border-top: 1px solid var(--line); padding-block: 20px; font-size: .82r
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }
+
+/* Deep study */
+.study-sum { display: grid; gap: 12px; }
+.stackbar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; gap: 2px; }
+.study { padding: 0; gap: 0; }
+.study summary { list-style: none; cursor: pointer; padding: 16px 18px; display: grid; gap: 6px; }
+.study summary::-webkit-details-marker { display: none; }
+.study summary::after { content: "Show the debate ▾"; font-size: .78rem; font-weight: 700; color: var(--accent); }
+.study[open] summary::after { content: "Hide ▴"; }
+.study summary:hover { background: var(--surface-2); border-radius: var(--r); }
+.st-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.st-top .ref { font-size: 1.08rem; }
+.st-dots { display: inline-flex; gap: 2px; margin-left: auto; }
+.pill.case { background: var(--gold); color: var(--surface); }
+.study .quote { color: var(--ink); font-style: italic; }
+.st-body { display: grid; gap: 16px; padding: 4px 18px 18px; border-top: 1px solid var(--line); padding-top: 16px; }
+.st-sec { display: grid; gap: 6px; }
+.st-sec .lbl, .versus .lbl { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.st-sec p, .counter p, .word p { color: var(--ink); }
+.st-sec.used { background: var(--surface-2); border-radius: 8px; padding: 12px 14px; }
+.counter { border-left: 4px solid var(--c); padding: 4px 0 4px 14px; display: grid; gap: 4px; }
+.st-sec.reply { border-left: 4px solid var(--ok); padding-left: 14px; }
+.word-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr)); }
+.word-head { display: flex; gap: 14px; align-items: center; }
+.orig { font-family: var(--font-quote); font-size: 1.7rem; color: var(--accent); line-height: 1.1; min-width: 0; overflow-wrap: anywhere; }

@@ -14,7 +14,7 @@
     sola: "Sola Scriptura", arminian: "Arminian-Wesleyan", progressive: "Progressive Sanct.", sovereignty: "Sovereignty in Suffering",
     hell: "Traditional Hell", futurism: "Futurism" };
 
-  const state = { view: "overview", doc: "psa", sub: "overview", lensFilter: "all", tlFilter: "all", flowDoc: "psa", tree: "hell", treeNode: null, trail: [], mapSel: null };
+  const state = { view: "overview", doc: "psa", sub: "overview", lensFilter: "all", tlFilter: "all", flowDoc: "psa", tree: "hell", treeNode: null, trail: [], mapSel: null, studyDoc: "psa", studyQ: "", studyLens: "all", studyKind: "all", wordTopic: "all" };
 
   const store = {
     get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
@@ -105,7 +105,9 @@
             <div class="stat"><b>${Object.keys(L).length}</b><span>alternative lenses</span></div>
             <div class="stat"><b>${fathers}</b><span>church-father views</span></div>
             <div class="stat"><b>${tensions}</b><span>scriptural tensions</span></div>
-            <div class="stat"><b>${TC.texts.length}</b><span>contested texts</span></div>
+            <div class="stat"><b>${Object.values(TC.study).reduce((n, a) => n + a.length, 0)}</b><span>proof texts studied</span></div>
+            <div class="stat"><b>${Object.values(TC.study).reduce((n, a) => n + a.reduce((m, x) => m + x.counters.length, 0), 0)}</b><span>counter-readings</span></div>
+            <div class="stat"><b>${TC.words.length}</b><span>word studies</span></div>
           </div>
         </div>
         ${compassSVG()}
@@ -155,7 +157,7 @@
         break;
       case "scripture":
         body = `<div class="grid">${d.scriptures.map(s => `<div class="card"><span class="ref">${esc(s.ref)}</span><p style="-webkit-line-clamp:unset;color:var(--ink)">${esc(s.use)}</p></div>`).join("")}</div>
-          <p class="note" style="margin-top:16px">These are the texts the doctrine's defenders rely on. See Contradictions and the Contested texts view for alternative readings.</p>`;
+          <div class="card" style="margin-top:16px;border-color:var(--accent)"><h3>Go deeper</h3><p style="-webkit-line-clamp:unset">The Deep study covers ${(TC.study[d.id] || []).length} texts and biblical cases for this doctrine, with every alternative view's counter-reading and the defenders' reply.</p><div><button class="ans" type="button" data-study="${d.id}">Open the deep study</button></div></div>`;
         break;
       case "influences":
         body = `<div class="grid">${d.influences.map(k => `<div class="card infl"><span class="kind">${esc(I[k].kind)} · ${esc(I[k].era)}</span><h3>${esc(I[k].name)}</h3><p style="-webkit-line-clamp:unset">${esc(I[k].desc)}</p></div>`).join("")}</div>
@@ -185,6 +187,74 @@
         <div class="subtabs" role="tablist">${SUBS.map(([k, n]) => `<button class="subtab" role="tab" type="button" data-sub="${k}" aria-selected="${state.sub === k}">${n}</button>`).join("")}</div>
         ${body}
       </div></div>`;
+  }
+
+  /* ---------- Deep study: every proof text, every counter ---------- */
+  function renderStudy() {
+    const d = byId[state.studyDoc], items = TC.study[d.id] || [];
+    const lensCount = {};
+    items.forEach(it => it.counters.forEach(c => lensCount[c.l] = (lensCount[c.l] || 0) + 1));
+    const total = Object.values(lensCount).reduce((a, b) => a + b, 0) || 1;
+    const bar = Object.entries(lensCount).sort((a, b) => b[1] - a[1]).map(([k, n]) =>
+      `<span style="flex:${n};background:${L[k].color}" title="${esc(L[k].name)}: ${n} counter-readings"></span>`).join("");
+    const lensesHere = Object.keys(lensCount);
+    $("#v-study").innerHTML = `<div class="section-head"><div class="eyebrow">Deep study</div><h2>Every proof text, and how the other views answer it</h2>
+      <p class="lede">For each doctrine: the verses and biblical cases its defenders quote, the argument they build, each alternative view's counter-reading, and the defenders' reply.</p></div>
+      <div class="filter-row">${D.map(x => `<button class="chip" type="button" data-sdoc="${x.id}" aria-pressed="${x.id === d.id}"><span class="lens-dot" style="background:${DC[x.id]}"></span>${esc(SHORT[x.id])} <span class="muted">${(TC.study[x.id] || []).length}</span></button>`).join("")}</div>
+      <div class="panel study-sum">
+        <div><span class="eyebrow" style="color:${DC[d.id]}">${esc(d.family)}</span><h3>${esc(d.name)}</h3>
+          <p class="muted">${items.length} texts and cases · ${total} counter-readings from ${lensesHere.length} views</p></div>
+        <div class="stackbar" role="img" aria-label="Share of counter-readings by view">${bar}</div>
+        <div class="legend" style="margin-top:0">${Object.entries(lensCount).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<span><i style="background:${L[k].color}"></i>${esc(L[k].short)} ${n}</span>`).join("")}</div>
+      </div>
+      <div class="searchbar" style="margin-top:16px">
+        <input id="sq" type="search" placeholder="Search verses, words or arguments in this doctrine" aria-label="Search the deep study" value="${esc(state.studyQ)}">
+        <select id="slens" aria-label="Filter by answering view"><option value="all">Every answering view</option>${lensesHere.map(k => `<option value="${k}" ${state.studyLens === k ? "selected" : ""}>${esc(L[k].name)}</option>`).join("")}</select>
+        <select id="skind" aria-label="Filter by type"><option value="all">Texts and cases</option><option value="text" ${state.studyKind === "text" ? "selected" : ""}>Proof texts only</option><option value="case" ${state.studyKind === "case" ? "selected" : ""}>Biblical cases only</option></select>
+        <button class="ghost" type="button" data-expand="1">Expand all</button><button class="ghost" type="button" data-expand="0">Collapse all</button>
+      </div>
+      <div id="study-list" class="stack" style="gap:12px"></div>`;
+    drawStudyList();
+    $("#sq").addEventListener("input", e => { state.studyQ = e.target.value; drawStudyList(); });
+    $("#slens").addEventListener("change", e => { state.studyLens = e.target.value; drawStudyList(); });
+    $("#skind").addEventListener("change", e => { state.studyKind = e.target.value; drawStudyList(); });
+  }
+  function drawStudyList() {
+    const d = byId[state.studyDoc], q = state.studyQ.trim().toLowerCase();
+    const items = (TC.study[d.id] || []).filter(it =>
+      (state.studyKind === "all" || it.kind === state.studyKind) &&
+      (state.studyLens === "all" || it.counters.some(c => c.l === state.studyLens)) &&
+      (!q || JSON.stringify(it).toLowerCase().includes(q)));
+    $("#study-list").innerHTML = items.length ? items.map((it, i) => `
+      <details class="card study" ${i < 2 || q ? "open" : ""}>
+        <summary>
+          <div class="st-top"><span class="ref">${esc(it.ref)}</span><span class="pill ${it.kind === "case" ? "case" : ""}">${it.kind === "case" ? "Biblical case" : "Proof text"}</span>
+            <span class="st-dots">${it.counters.map(c => `<span class="lens-dot" style="background:${L[c.l].color}" title="${esc(L[c.l].name)}"></span>`).join("")}</span></div>
+          <p class="quote">${esc(it.quote)}</p>
+        </summary>
+        <div class="st-body">
+          <div class="st-sec used"><span class="lbl">How ${esc(SHORT[d.id])} uses it</span><p>${esc(it.used)}</p></div>
+          <div class="st-sec"><span class="lbl">How the other views answer</span>
+            <div class="stack" style="gap:10px">${it.counters.filter(c => state.studyLens === "all" || c.l === state.studyLens).map(c => `
+              <div class="counter" style="--c:${L[c.l].color}"><b style="color:${L[c.l].color}">${esc(L[c.l].name)}</b><p>${esc(c.t)}</p>${refs(c.r)}</div>`).join("")}</div></div>
+          <div class="st-sec reply"><span class="lbl">The defenders' reply</span><p>${esc(it.reply)}</p></div>
+        </div>
+      </details>`).join("") : `<p class="muted">Nothing matches. Clear the search or choose another view.</p>`;
+  }
+
+  /* ---------- Word studies ---------- */
+  function renderWords() {
+    const topics = [...new Set(TC.words.map(w => w.topic))];
+    const shown = TC.words.filter(w => state.wordTopic === "all" || w.topic === state.wordTopic);
+    $("#v-words").innerHTML = `<div class="section-head"><div class="eyebrow">Word studies</div><h2>The Greek and Hebrew words behind the debates</h2>
+      <p class="lede">Many disagreements come down to how a single word is translated. Each card gives the traditional reading and the alternative reading, with the verses to check.</p></div>
+      <div class="filter-row"><button class="chip" type="button" data-wt="all" aria-pressed="${state.wordTopic === "all"}">All ${TC.words.length} words</button>${topics.map(t => `<button class="chip" type="button" data-wt="${t}" aria-pressed="${state.wordTopic === t}"><span class="lens-dot" style="background:${DC[t]}"></span>${esc(SHORT[t])}</button>`).join("")}</div>
+      <div class="word-grid">${shown.map(w => `
+        <div class="card word">
+          <div class="word-head"><span class="orig" lang="${w.lang.startsWith("Hebrew") ? "he" : "el"}">${esc(w.s)}</span><div><h3>${esc(w.w)}</h3><span class="muted">${esc(w.lang)} · “${esc(w.gloss)}”</span></div></div>
+          <div class="versus"><div><span class="lbl" style="color:${DC[w.topic]}">Traditional reading</span><p>${esc(w.trad)}</p></div><div><span class="lbl" style="color:var(--accent)">Alternative reading</span><p>${esc(w.alt)}</p></div></div>
+          ${refs(w.refs)}
+        </div>`).join("")}</div>`;
   }
 
   /* ---------- Influence map ---------- */
@@ -354,7 +424,7 @@
   }
 
   /* ---------- Routing ---------- */
-  const VIEWS = { overview: renderOverview, explorer: renderExplorer, map: renderMap, timeline: renderTimeline, flow: renderFlow, matrix: renderMatrix, texts: renderTexts, spectrum: renderSpectrum, sources: renderSources };
+  const VIEWS = { overview: renderOverview, explorer: renderExplorer, study: renderStudy, words: renderWords, map: renderMap, timeline: renderTimeline, flow: renderFlow, matrix: renderMatrix, texts: renderTexts, spectrum: renderSpectrum, sources: renderSources };
   function show(view, push) {
     state.view = view;
     document.querySelectorAll(".view").forEach(v => v.hidden = v.id !== "v-" + view);
@@ -365,7 +435,7 @@
   function openDoc(id, sub) { state.doc = id; state.sub = sub || "overview"; state.lensFilter = "all"; show("explorer", true); window.scrollTo({ top: 0 }); }
 
   document.addEventListener("click", e => {
-    const t = e.target.closest("[data-view],[data-open],[data-doc],[data-sub],[data-lens],[data-tl],[data-flow],[data-tree],[data-next],[data-reset],[data-cell],[data-node],.tl-dot,[data-scheme-btn]");
+    const t = e.target.closest("[data-view],[data-open],[data-doc],[data-sub],[data-lens],[data-tl],[data-flow],[data-tree],[data-next],[data-reset],[data-cell],[data-node],.tl-dot,[data-scheme-btn],[data-sdoc],[data-expand],[data-wt],[data-study]");
     if (!t) return;
     const ds = t.dataset;
     if (ds.view) show(ds.view, true);
@@ -385,6 +455,10 @@
       if (row) { row.scrollIntoView({ behavior: "smooth", block: "center" }); row.classList.add("flash"); setTimeout(() => row.classList.remove("flash"), 1600); }
     }
     else if (ds.schemeBtn) setScheme(ds.schemeBtn);
+    else if (ds.sdoc) { state.studyDoc = ds.sdoc; state.studyQ = ""; state.studyLens = "all"; renderStudy(); }
+    else if (ds.study) { state.studyDoc = ds.study; state.studyQ = ""; state.studyLens = "all"; show("study", true); window.scrollTo({ top: 0 }); }
+    else if (ds.expand) document.querySelectorAll("#study-list details").forEach(x => x.open = ds.expand === "1");
+    else if (ds.wt) { state.wordTopic = ds.wt; renderWords(); }
   });
   document.addEventListener("keydown", e => {
     const n = e.target.closest && e.target.closest("[data-node]");

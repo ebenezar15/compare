@@ -301,3 +301,26 @@ footer { border-top: 1px solid var(--line); padding-block: 20px; font-size: .82r
 .gl-bar span { display: block; height: 10px; border-radius: 5px; background: var(--warn); min-width: 2px; }
 .gl-bar em { font-style: normal; font-weight: 800; font-variant-numeric: tabular-nums; font-size: .85rem; }
 @media (max-width: 760px) { .fgrid, .straw-grid { grid-template-columns: 1fr; } .gl-row { grid-template-columns: 1fr; } }
+
+/* Word studies evidence */
+.word { padding: 0; gap: 0; }
+.word summary { list-style: none; cursor: pointer; padding: 16px 18px; display: grid; gap: 8px; }
+.word summary::-webkit-details-marker { display: none; }
+.word summary::after { content: "Show the evidence ▾"; font-size: .78rem; font-weight: 700; color: var(--accent); }
+.word[open] summary::after { content: "Hide ▴"; }
+.word-head { flex-wrap: wrap; }
+.tally { display: flex; height: 8px; border-radius: 4px; overflow: hidden; gap: 2px; background: var(--surface-2); }
+.tally .alt { background: var(--accent); } .tally .trad { background: var(--gold); } .tally .ctx { background: var(--line); }
+.tally-lbl { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: .75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ev-legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: .82rem; color: var(--muted); }
+.sd { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: middle; margin-right: 6px; }
+.sd.alt { background: var(--accent); } .sd.trad { background: var(--gold); } .sd.ctx { background: var(--line); }
+.evlist { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ev { border-left: 4px solid var(--line); padding: 6px 0 6px 14px; display: grid; gap: 4px; }
+.ev.alt { border-color: var(--accent); } .ev.trad { border-color: var(--gold); } .ev.both { border-color: var(--ok); }
+.ev p { color: var(--ink); }
+.ev-top { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.evk { font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; background: var(--surface-2); color: var(--muted); padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.evside { font-size: .7rem; font-weight: 800; margin-left: auto; white-space: nowrap; }
+.evside.alt { color: var(--accent); } .evside.trad { color: var(--gold); } .evside.ctx { color: var(--muted); } .evside.both { color: var(--ok); }
+.lib { margin: 0; padding-left: 18px; display: grid; gap: 8px; }

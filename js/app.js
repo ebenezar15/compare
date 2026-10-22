@@ -14,7 +14,7 @@
     sola: "Sola Scriptura", arminian: "Arminian-Wesleyan", progressive: "Progressive Sanct.", sovereignty: "Sovereignty in Suffering",
     hell: "Traditional Hell", futurism: "Futurism" };
 
-  const state = { view: "overview", doc: "psa", sub: "overview", lensFilter: "all", tlFilter: "all", flowDoc: "psa", tree: "hell", treeNode: null, trail: [], mapSel: null, studyDoc: "psa", studyQ: "", studyLens: "all", studyKind: "all", wordTopic: "all", logicDoc: "psa" };
+  const state = { view: "overview", doc: "psa", sub: "overview", lensFilter: "all", tlFilter: "all", flowDoc: "psa", tree: "hell", treeNode: null, trail: [], mapSel: null, studyDoc: "psa", studyQ: "", studyLens: "all", studyKind: "all", wordTopic: "all", wordQ: "", wordKind: "all", logicDoc: "psa" };
 
   const store = {
     get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
@@ -299,16 +299,49 @@
   /* ---------- Word studies ---------- */
   function renderWords() {
     const topics = [...new Set(TC.words.map(w => w.topic))];
-    const shown = TC.words.filter(w => state.wordTopic === "all" || w.topic === state.wordTopic);
-    $("#v-words").innerHTML = `<div class="section-head"><div class="eyebrow">Word studies</div><h2>The Greek and Hebrew words behind the debates</h2>
-      <p class="lede">Many disagreements come down to how a single word is translated. Each card gives the traditional reading and the alternative reading, with the verses to check.</p></div>
-      <div class="filter-row"><button class="chip" type="button" data-wt="all" aria-pressed="${state.wordTopic === "all"}">All ${TC.words.length} words</button>${topics.map(t => `<button class="chip" type="button" data-wt="${t}" aria-pressed="${state.wordTopic === t}"><span class="lens-dot" style="background:${DC[t]}"></span>${esc(SHORT[t])}</button>`).join("")}</div>
-      <div class="word-grid">${shown.map(w => `
-        <div class="card word">
-          <div class="word-head"><span class="orig" lang="${w.lang.startsWith("Hebrew") ? "he" : "el"}">${esc(w.s)}</span><div><h3>${esc(w.w)}</h3><span class="muted">${esc(w.lang)} · “${esc(w.gloss)}”</span></div></div>
+    const nEv = TC.words.reduce((n, w) => n + w.ev.length, 0);
+    const kinds = Object.keys(TC.evKinds);
+    $("#v-words").innerHTML = `<div class="section-head"><div class="eyebrow">Word studies</div><h2>The Greek and Hebrew words, with the evidence</h2>
+      <p class="lede">Each word gives its root, both readings, and an evidence trail from classical Greek, the Septuagint, Jewish and Qumran texts, rabbinic writings, papyri, church fathers, lexicons and modern scholarship. Every source is marked by which reading it supports, and each word ends with a balanced verdict.</p>
+      <div class="stats" style="margin-top:6px"><div class="stat"><b>${TC.words.length}</b><span>words</span></div><div class="stat"><b>${nEv}</b><span>pieces of evidence</span></div><div class="stat"><b>${kinds.length}</b><span>kinds of source</span></div></div></div>
+      <div class="ev-legend"><span><i class="sd alt"></i>Supports the alternative reading</span><span><i class="sd trad"></i>Supports the traditional reading</span><span><i class="sd ctx"></i>Context both sides use</span></div>
+      <div class="searchbar" style="margin-top:12px"><input id="wq" type="search" placeholder="Search words, sources or verses, e.g. Josephus, Septuagint, Romans 3" aria-label="Search word studies" value="${esc(state.wordQ)}">
+        <select id="wkind" aria-label="Filter by kind of source"><option value="all">All kinds of source</option>${kinds.map(k => `<option value="${esc(k)}" ${state.wordKind === k ? "selected" : ""}>${esc(k)}</option>`).join("")}</select></div>
+      <div class="filter-row"><button class="chip" type="button" data-wt="all" aria-pressed="${state.wordTopic === "all"}">All topics</button>${topics.map(t => `<button class="chip" type="button" data-wt="${t}" aria-pressed="${state.wordTopic === t}"><span class="lens-dot" style="background:${DC[t]}"></span>${esc(SHORT[t])}</button>`).join("")}</div>
+      <div id="word-list" class="stack" style="gap:14px"></div>
+      <div class="section-head" style="margin-top:36px"><div class="eyebrow">Check it yourself</div><h2>Lexicons, primary texts and studies</h2></div>
+      <div class="panel"><ul class="lib">${TC.wordLibrary.map(r => `<li><a href="${esc(r.u)}" target="_blank" rel="noopener">${esc(r.t)}</a><span class="muted"> — ${esc(r.d)}</span></li>`).join("")}</ul>
+        <p class="note" style="margin-top:14px">Standard print references: BDAG (Bauer-Danker Greek-English Lexicon, 3rd ed. 2000), LSJ, Louw-Nida, Moulton-Milligan's Vocabulary of the Greek Testament, TDNT (Kittel), BDB and HALOT for Hebrew, and TDOT/TLOT.</p></div>`;
+    drawWords();
+    $("#wq").addEventListener("input", e => { state.wordQ = e.target.value; drawWords(); });
+    $("#wkind").addEventListener("change", e => { state.wordKind = e.target.value; drawWords(); });
+  }
+  function drawWords() {
+    const q = state.wordQ.trim().toLowerCase();
+    const sideLbl = { alt: "Alternative", trad: "Traditional", ctx: "Context", both: "Both" };
+    const shown = TC.words.filter(w => (state.wordTopic === "all" || w.topic === state.wordTopic) &&
+      (state.wordKind === "all" || w.ev.some(e => e.k === state.wordKind)) &&
+      (!q || JSON.stringify(w).toLowerCase().includes(q)));
+    $("#word-list").innerHTML = shown.length ? shown.map((w, i) => {
+      const a = w.ev.filter(e => e.side === "alt").length, t = w.ev.filter(e => e.side === "trad").length, c = w.ev.length - a - t;
+      const ev = w.ev.filter(e => state.wordKind === "all" || e.k === state.wordKind);
+      return `<details class="card word" ${i < 2 || q || state.wordKind !== "all" ? "open" : ""}>
+        <summary>
+          <div class="word-head"><span class="orig" lang="${w.lang.startsWith("Hebrew") ? "he" : "el"}">${esc(w.s)}</span>
+            <div style="min-width:0"><h3>${esc(w.w)}</h3><span class="muted">${esc(w.lang)} · “${esc(w.gloss)}”</span></div>
+            <span class="pill" style="margin-left:auto"><span class="lens-dot" style="background:${DC[w.topic]}"></span>${esc(SHORT[w.topic])}</span></div>
+          <div class="tally" title="Evidence balance"><span class="alt" style="flex:${a}"></span><span class="ctx" style="flex:${c}"></span><span class="trad" style="flex:${t}"></span></div>
+          <div class="tally-lbl"><span>${a} support the alternative</span><span>${c} context</span><span>${t} support the traditional</span></div>
+        </summary>
+        <div class="st-body">
+          <div class="st-sec used"><span class="lbl">Root and etymology</span><p>${esc(w.root)}</p></div>
           <div class="versus"><div><span class="lbl" style="color:${DC[w.topic]}">Traditional reading</span><p>${esc(w.trad)}</p></div><div><span class="lbl" style="color:var(--accent)">Alternative reading</span><p>${esc(w.alt)}</p></div></div>
-          ${refs(w.refs)}
-        </div>`).join("")}</div>`;
+          <div class="st-sec"><span class="lbl">Evidence (${ev.length})</span>
+            <ol class="evlist">${ev.map(e => `<li class="ev ${e.side}"><div class="ev-top"><span class="evk">${esc(e.k)}</span><b>${esc(e.src)}</b><span class="evside ${e.side}">${sideLbl[e.side]}</span></div><p>${esc(e.note)}</p></li>`).join("")}</ol></div>
+          <div class="st-sec reply"><span class="lbl">Balanced verdict</span><p>${esc(w.verdict)}</p></div>
+        </div>
+      </details>`;
+    }).join("") : `<p class="muted">No words match. Clear the search or choose another source type.</p>`;
   }
 
   /* ---------- Influence map ---------- */

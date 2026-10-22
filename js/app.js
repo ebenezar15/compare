@@ -14,7 +14,7 @@
     sola: "Sola Scriptura", arminian: "Arminian-Wesleyan", progressive: "Progressive Sanct.", sovereignty: "Sovereignty in Suffering",
     hell: "Traditional Hell", futurism: "Futurism" };
 
-  const state = { view: "overview", doc: "psa", sub: "overview", lensFilter: "all", tlFilter: "all", flowDoc: "psa", tree: "hell", treeNode: null, trail: [], mapSel: null, studyDoc: "psa", studyQ: "", studyLens: "all", studyKind: "all", wordTopic: "all" };
+  const state = { view: "overview", doc: "psa", sub: "overview", lensFilter: "all", tlFilter: "all", flowDoc: "psa", tree: "hell", treeNode: null, trail: [], mapSel: null, studyDoc: "psa", studyQ: "", studyLens: "all", studyKind: "all", wordTopic: "all", logicDoc: "psa" };
 
   const store = {
     get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
@@ -108,6 +108,8 @@
             <div class="stat"><b>${Object.values(TC.study).reduce((n, a) => n + a.length, 0)}</b><span>proof texts studied</span></div>
             <div class="stat"><b>${Object.values(TC.study).reduce((n, a) => n + a.reduce((m, x) => m + x.counters.length, 0), 0)}</b><span>counter-readings</span></div>
             <div class="stat"><b>${TC.words.length}</b><span>word studies</span></div>
+            <div class="stat"><b>${Object.values(TC.logic).reduce((n, x) => n + x.fallacies.length, 0)}</b><span>fallacies examined</span></div>
+            <div class="stat"><b>${Object.values(TC.logic).reduce((n, x) => n + x.strawmen.length, 0) + TC.fairplay.length}</b><span>strawmen answered</span></div>
           </div>
         </div>
         ${compassSVG()}
@@ -240,6 +242,58 @@
           <div class="st-sec reply"><span class="lbl">The defenders' reply</span><p>${esc(it.reply)}</p></div>
         </div>
       </details>`).join("") : `<p class="muted">Nothing matches. Clear the search or choose another view.</p>`;
+  }
+
+  /* ---------- Logic & fallacies ---------- */
+  function renderLogic() {
+    const d = byId[state.logicDoc], g = TC.logic[d.id];
+    const counts = {};
+    Object.values(TC.logic).forEach(x => x.fallacies.forEach(f => counts[f.type] = (counts[f.type] || 0) + 1));
+    const max = Math.max(...Object.values(counts));
+    const fair = TC.fairplay.filter(f => f.doc === d.id || f.doc === "all");
+    $("#v-logic").innerHTML = `<div class="section-head"><div class="eyebrow">Logic & fallacies</div><h2>Testing each doctrine's reasoning</h2>
+      <p class="lede">The core argument laid out step by step with its weakest premise marked. Then the logical and scriptural fallacies critics identify, and the strawman versions of other views that defenders argue against.</p></div>
+      <div class="filter-row">${D.map(x => `<button class="chip" type="button" data-ldoc="${x.id}" aria-pressed="${x.id === d.id}"><span class="lens-dot" style="background:${DC[x.id]}"></span>${esc(SHORT[x.id])}</button>`).join("")}</div>
+
+      <div class="panel syl">
+        <span class="eyebrow">The argument, step by step · ${esc(d.name)}</span>
+        <div class="syl-steps">${g.syl.p.map((p, i) => {
+          const last = i === g.syl.p.length - 1, weak = i === g.syl.weak;
+          return `${last ? `<div class="syl-therefore">therefore</div>` : ""}<div class="syl-p ${weak ? "weak" : ""} ${last ? "concl" : ""}"><span class="n">${last ? "C" : "P" + (i + 1)}</span><span>${esc(last ? p.replace(/^Therefore /, "").replace(/^./, c => c.toUpperCase()) : p)}</span>${weak ? `<span class="fails">Fails here</span>` : ""}</div>`;
+        }).join("")}</div>
+        <div class="syl-why"><b>Why it fails.</b> ${esc(g.syl.why)}${refs(g.syl.refs)}</div>
+      </div>
+
+      <div class="section-head" style="margin-top:32px"><div class="eyebrow">${g.fallacies.length} fallacies</div><h2>Logical and scriptural problems</h2></div>
+      <div class="stack" style="gap:12px">${g.fallacies.map(f => `
+        <div class="card fallacy">
+          <div class="resp-top"><h3>${esc(f.name)}</h3><span class="ftype" title="${esc(TC.fallacyTypes[f.type] || "")}">${esc(f.type)}</span></div>
+          <div class="claim"><span class="lbl">The claim</span><p>“${esc(f.claim)}”</p></div>
+          <div class="fgrid">
+            <div><span class="lbl">Why the logic fails</span><p>${esc(f.problem)}</p></div>
+            <div><span class="lbl">What Scripture says</span><p>${esc(f.scripture)}</p>${refs(f.refs)}</div>
+          </div>
+          <div class="st-sec reply"><span class="lbl">The defenders' reply</span><p>${esc(f.reply)}</p></div>
+        </div>`).join("")}</div>
+
+      <div class="section-head" style="margin-top:32px"><div class="eyebrow">${g.strawmen.length} strawmen</div><h2>How defenders misdescribe the alternatives</h2>
+        <p class="muted">Each row puts a common caricature beside what the view actually teaches, with the scriptural counter.</p></div>
+      <div class="stack" style="gap:12px">${g.strawmen.map(s => `
+        <div class="card straw" style="--c:${L[s.lens].color}">
+          <div class="straw-grid">
+            <div class="say"><span class="lbl">What they say ${lensPill(s.lens)}</span><p>“${esc(s.say)}”</p></div>
+            <div class="real"><span class="lbl">What the view actually holds</span><p>${esc(s.real)}</p></div>
+          </div>
+          <div><span class="lbl">The counter</span><p>${esc(s.counter)}</p>${refs(s.refs)}</div>
+        </div>`).join("")}</div>
+
+      <div class="section-head" style="margin-top:32px"><div class="eyebrow">Fair play</div><h2>Strawmen used against ${esc(SHORT[d.id])}</h2>
+        <p class="muted">Critics caricature too. These are corrected so each argument above meets the doctrine as its defenders actually hold it.</p></div>
+      <div class="grid">${fair.map(f => `<div class="card fair"><span class="lbl">The caricature</span><p class="strike">“${esc(f.say)}”</p><span class="lbl">The correction</span><p>${esc(f.real)}</p>${refs(f.refs)}</div>`).join("")}</div>
+
+      <div class="section-head" style="margin-top:32px"><div class="eyebrow">Glossary</div><h2>Fallacies named in this study</h2><p class="muted">Bars show how often each fallacy is identified across all ten doctrines.</p></div>
+      <div class="panel gloss">${Object.entries(TC.fallacyTypes).sort((a, b) => (counts[b[0]] || 0) - (counts[a[0]] || 0)).map(([k, v]) => `
+        <div class="gl-row"><div><b>${esc(k)}</b><p class="muted">${esc(v)}</p></div><div class="gl-bar"><span style="width:${(counts[k] || 0) / max * 100}%"></span><em>${counts[k] || 0}</em></div></div>`).join("")}</div>`;
   }
 
   /* ---------- Word studies ---------- */
@@ -424,7 +478,7 @@
   }
 
   /* ---------- Routing ---------- */
-  const VIEWS = { overview: renderOverview, explorer: renderExplorer, study: renderStudy, words: renderWords, map: renderMap, timeline: renderTimeline, flow: renderFlow, matrix: renderMatrix, texts: renderTexts, spectrum: renderSpectrum, sources: renderSources };
+  const VIEWS = { overview: renderOverview, explorer: renderExplorer, study: renderStudy, words: renderWords, logic: renderLogic, map: renderMap, timeline: renderTimeline, flow: renderFlow, matrix: renderMatrix, texts: renderTexts, spectrum: renderSpectrum, sources: renderSources };
   function show(view, push) {
     state.view = view;
     document.querySelectorAll(".view").forEach(v => v.hidden = v.id !== "v-" + view);
@@ -435,7 +489,7 @@
   function openDoc(id, sub) { state.doc = id; state.sub = sub || "overview"; state.lensFilter = "all"; show("explorer", true); window.scrollTo({ top: 0 }); }
 
   document.addEventListener("click", e => {
-    const t = e.target.closest("[data-view],[data-open],[data-doc],[data-sub],[data-lens],[data-tl],[data-flow],[data-tree],[data-next],[data-reset],[data-cell],[data-node],.tl-dot,[data-scheme-btn],[data-sdoc],[data-expand],[data-wt],[data-study]");
+    const t = e.target.closest("[data-view],[data-open],[data-doc],[data-sub],[data-lens],[data-tl],[data-flow],[data-tree],[data-next],[data-reset],[data-cell],[data-node],.tl-dot,[data-scheme-btn],[data-sdoc],[data-expand],[data-wt],[data-study],[data-ldoc]");
     if (!t) return;
     const ds = t.dataset;
     if (ds.view) show(ds.view, true);
@@ -458,6 +512,7 @@
     else if (ds.sdoc) { state.studyDoc = ds.sdoc; state.studyQ = ""; state.studyLens = "all"; renderStudy(); }
     else if (ds.study) { state.studyDoc = ds.study; state.studyQ = ""; state.studyLens = "all"; show("study", true); window.scrollTo({ top: 0 }); }
     else if (ds.expand) document.querySelectorAll("#study-list details").forEach(x => x.open = ds.expand === "1");
+    else if (ds.ldoc) { state.logicDoc = ds.ldoc; renderLogic(); }
     else if (ds.wt) { state.wordTopic = ds.wt; renderWords(); }
   });
   document.addEventListener("keydown", e => {

@@ -17,6 +17,7 @@ An interactive study app that examines ten Western doctrines — Western Evangel
 | Overview | Compass diagram, doctrine and lens cards, a chart of when each doctrine took shape |
 | Doctrines | A full dossier for each doctrine, in eight tabs |
 | Deep study | 96 proof texts and biblical cases (for example the Passover lamb, Job, Pharaoh, the rich man and Lazarus, Gog and Magog), each with the argument a doctrine's defenders build, 167 counter-readings from the alternative views, and the defenders' reply |
+| Logic & fallacies | For each doctrine: its core argument as a syllogism with the failing premise marked, 44 named logical and scriptural fallacies (each with the claim, why the logic fails, what Scripture says and the defenders' reply), 33 strawmen used against the alternative views set beside what those views actually hold, 9 fair-play corrections of strawmen used against the doctrines, and a fallacy glossary with frequency bars |
 | Word studies | 22 Greek and Hebrew terms, such as aiōnios, kolasis, Gehenna, hilastērion, dikaiosynē, genea and apantēsis, each with the traditional and the alternative reading |
 | Influence map | Network map: influences → doctrines → challenging lenses |
 | Timeline | About 100 dated events from AD 135 to 2019, with filters |
@@ -36,4 +37,4 @@ It's a static site with no build step. Open `index.html` in a browser, or serve 
 python3 -m http.server 8000
 ```
 
-Content lives in `js/data.js`, the deep study in `js/study-1.js` to `js/study-3.js`, and the word studies in `js/words.js`, so you can add doctrines, lenses, texts or sources there.
+Content lives in `js/data.js`, the deep study in `js/study-1.js` to `js/study-3.js`, the word studies in `js/words.js`, and the logic and fallacy analysis in `js/logic.js`, so you can add doctrines, lenses, texts or sources there.

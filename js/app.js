@@ -308,6 +308,7 @@
       <div class="searchbar" style="margin-top:12px"><input id="wq" type="search" placeholder="Search words, sources or verses, e.g. Josephus, Septuagint, Romans 3" aria-label="Search word studies" value="${esc(state.wordQ)}">
         <select id="wkind" aria-label="Filter by kind of source"><option value="all">All kinds of source</option>${kinds.map(k => `<option value="${esc(k)}" ${state.wordKind === k ? "selected" : ""}>${esc(k)}</option>`).join("")}</select></div>
       <div class="filter-row"><button class="chip" type="button" data-wt="all" aria-pressed="${state.wordTopic === "all"}">All topics</button>${topics.map(t => `<button class="chip" type="button" data-wt="${t}" aria-pressed="${state.wordTopic === t}"><span class="lens-dot" style="background:${DC[t]}"></span>${esc(SHORT[t])}</button>`).join("")}</div>
+      ${isaiahPanel()}
       <div id="word-list" class="stack" style="gap:14px"></div>
       <div class="section-head" style="margin-top:36px"><div class="eyebrow">Check it yourself</div><h2>Lexicons, primary texts and studies</h2></div>
       <div class="panel"><ul class="lib">${TC.wordLibrary.map(r => `<li><a href="${esc(r.u)}" target="_blank" rel="noopener">${esc(r.t)}</a><span class="muted"> — ${esc(r.d)}</span></li>`).join("")}</ul>
@@ -315,6 +316,24 @@
     drawWords();
     $("#wq").addEventListener("input", e => { state.wordQ = e.target.value; drawWords(); });
     $("#wkind").addEventListener("change", e => { state.wordKind = e.target.value; drawWords(); });
+  }
+  function isaiahPanel() {
+    const z = TC.isaiah, sl = { alt: "Supports 'cleanse'", trad: "Supports 'crush'" };
+    const blk = (title, arr, cls) => `<div class="iz-col ${cls}"><h4>${title}</h4>${arr.map(x => `<div><b>${esc(x.h)}</b><p>${esc(x.t)}</p></div>`).join("")}</div>`;
+    return `<details class="card isaiah" id="isaiah" open>
+      <summary><span class="eyebrow">Textual study</span><h2>${esc(z.title)}</h2><p class="muted">${esc(z.intro)}</p></summary>
+      <div class="st-body">
+        <div class="wit-grid">${z.witnesses.map(w => `<div class="wit ${w.side}">
+          <div class="ev-top"><b>${esc(w.name)}</b><span class="evside ${w.side}">${sl[w.side]}</span></div>
+          <span class="muted wit-date">${esc(w.date)}</span>
+          <p class="wit-text" ${w.rtl ? 'dir="rtl" lang="he"' : ""}>${esc(w.text)}</p>
+          ${w.tr ? `<p class="wit-tr">${esc(w.tr)}</p>` : ""}${w.en ? `<p class="wit-en">“${esc(w.en)}”</p>` : ""}
+          <p class="muted">${esc(w.note)}</p></div>`).join("")}</div>
+        ${blk("How the difference arose", z.how, "")}
+        <div class="iz-two">${blk("Why most translations follow 'crush'", z.why, "trad")}${blk("Why the 'cleanse' reading still matters", z.keep, "alt")}</div>
+        <div class="st-sec reply"><span class="lbl">What the original said, and what it means</span><p>${esc(z.verdict)}</p></div>
+        <div><span class="lbl">Read the sources</span><ul class="lib">${z.links.map(l => `<li><a href="${esc(l.u)}" target="_blank" rel="noopener">${esc(l.t)}</a></li>`).join("")}</ul></div>
+      </div></details>`;
   }
   function drawWords() {
     const q = state.wordQ.trim().toLowerCase();

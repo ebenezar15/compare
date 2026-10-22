@@ -324,3 +324,22 @@ footer { border-top: 1px solid var(--line); padding-block: 20px; font-size: .82r
 .evside { font-size: .7rem; font-weight: 800; margin-left: auto; white-space: nowrap; }
 .evside.alt { color: var(--accent); } .evside.trad { color: var(--gold); } .evside.ctx { color: var(--muted); } .evside.both { color: var(--ok); }
 .lib { margin: 0; padding-left: 18px; display: grid; gap: 8px; }
+
+/* Isaiah 53:10 textual study */
+.isaiah { padding: 0; gap: 0; border: 2px solid var(--accent); margin-bottom: 18px; }
+.isaiah summary { list-style: none; cursor: pointer; padding: 20px; display: grid; gap: 8px; }
+.isaiah summary::-webkit-details-marker { display: none; }
+.isaiah summary p { max-width: 80ch; }
+.wit-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); }
+.wit { border: 1px solid var(--line); border-top: 4px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 6px; align-content: start; background: var(--bg); min-width: 0; }
+.wit.alt { border-top-color: var(--accent); } .wit.trad { border-top-color: var(--gold); }
+.wit-date { font-size: .78rem; }
+.wit .wit-text { font-family: var(--font-quote); font-size: 1.35rem; line-height: 1.5; color: var(--ink); overflow-wrap: anywhere; }
+.wit-tr { font-style: italic; color: var(--muted); font-size: .9rem; }
+.wit-en { color: var(--ink); font-weight: 600; }
+.iz-col { display: grid; gap: 10px; align-content: start; }
+.iz-col h4 { font-size: 1rem; }
+.iz-col p { color: var(--ink); }
+.iz-col.trad { border-left: 4px solid var(--gold); padding-left: 14px; } .iz-col.alt { border-left: 4px solid var(--accent); padding-left: 14px; }
+.iz-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+@media (max-width: 760px) { .iz-two { grid-template-columns: 1fr; } }

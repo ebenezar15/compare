@@ -19,7 +19,7 @@ TC.study.psa = [
       { l: "rel", t: "The guilt offering ('asham) is a reparation offering — restitution that restores a damaged relationship (Lev 5:14-6:7), not a punishment. The rest of the verse shows what pleases God: 'he shall see his offspring… the will of the LORD shall prosper in his hand'.", r: ["Leviticus 6:1-7", "Isaiah 53:10-12"] },
       { l: "th", t: "The Father does not stand over against the Son. The Son 'gave himself' (Gal 2:20) and 'through the eternal Spirit offered himself' (Heb 9:14). The one will of the Trinity is to save, carried out by the Son entering death.", r: ["Galatians 2:20", "Hebrews 9:14", "John 10:17-18"] }
     ],
-    reply: "Reformed readers reply that the Hebrew daka ('crush') with God as subject is strong, and that 'asham includes satisfaction of guilt. Acts 4:28 says Herod and Pilate did 'whatever your hand and your plan had predestined', so God's active purpose stands behind the cross." },
+    reply: "(See the Isaiah 53:10 textual study in Word studies: the Septuagint reads 'the Lord wills to cleanse him from his wound'.) Reformed readers reply that the Hebrew daka ('crush') with God as subject is strong, and that 'asham includes satisfaction of guilt. Acts 4:28 says Herod and Pilate did 'whatever your hand and your plan had predestined', so God's active purpose stands behind the cross." },
   { ref: "2 Corinthians 5:21", kind: "text", quote: "For our sake he made him to be sin who knew no sin, so that in him we might become the righteousness of God.",
     used: "The great exchange: our sin is imputed to Christ and punished; his righteousness is imputed to us.",
     counters: [

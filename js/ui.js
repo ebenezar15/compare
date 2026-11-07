@@ -27,7 +27,7 @@
   /* ---------- Command palette ---------- */
   const pal = $("#palette"), pq = $("#pq"), plist = $("#plist");
   let items = [], hits = [], sel = 0;
-  const viewNames = { overview: "Overview", explorer: "Doctrines", study: "Deep study", words: "Word studies", logic: "Logic & fallacies", lxx: "Hebrew vs Greek", rom9: "Romans 9 review", map: "Influence map", timeline: "Timeline", flow: "Flowcharts", matrix: "Matrix", texts: "Contested texts", spectrum: "Spectrums", sources: "Sources" };
+  const viewNames = { overview: "Overview", explorer: "Doctrines", study: "Deep study", words: "Word studies", logic: "Logic & fallacies", lxx: "Hebrew vs Greek", rom9: "Romans 9 review", tulip: "Origins of TULIP", map: "Influence map", timeline: "Timeline", flow: "Flowcharts", matrix: "Matrix", texts: "Contested texts", spectrum: "Spectrums", sources: "Sources" };
   const after = fn => document.addEventListener("tc:view", function once() { document.removeEventListener("tc:view", once); setTimeout(fn, 60); });
   function buildIndex() {
     const T = window.TC, out = [];
@@ -44,6 +44,8 @@
     });
     T.rom9.points.forEach(p => out.push({ g: "Romans 9 review", t: p.n + ". " + p.title, s: p.concern, c: T.rom9.cats[p.cat].color,
       go: () => { A.state.r9cat = "all"; const f = () => scrollTo("pt-" + p.n); if (A.state.view === "rom9") { A.VIEWS.rom9(); setTimeout(f, 60); } else { after(f); A.show("rom9", true); } } }));
+    T.tulip.petals.forEach(p => out.push({ g: "Origins of TULIP", t: p.k + " · " + p.name, s: p.def, go: () => { A.state.tulipPetal = p.k; if (A.state.view === "tulip") A.VIEWS.tulip(); else A.show("tulip", true); } }));
+    T.tulip.lineage.forEach(n => out.push({ g: "Origins of TULIP", t: n.who + " (" + n.y + ")", s: n.what, go: () => A.show("tulip", true) }));
     T.texts.forEach(x => out.push({ g: "Contested texts", t: x.ref, s: x.alt, c: A.DC[x.topic], go: () => A.show("texts", true) }));
     return out;
   }

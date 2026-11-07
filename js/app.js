@@ -14,7 +14,7 @@
     sola: "Sola Scriptura", arminian: "Arminian-Wesleyan", progressive: "Progressive Sanct.", sovereignty: "Sovereignty in Suffering",
     hell: "Traditional Hell", futurism: "Futurism" };
 
-  const state = { view: "overview", doc: "psa", sub: "overview", lensFilter: "all", tlFilter: "all", flowDoc: "psa", tree: "hell", treeNode: null, trail: [], mapSel: null, studyDoc: "psa", studyQ: "", studyLens: "all", studyKind: "all", wordTopic: "all", wordQ: "", wordKind: "all", logicDoc: "psa", lxxTopic: "all", r9cat: "all" };
+  const state = { view: "overview", doc: "psa", sub: "overview", lensFilter: "all", tlFilter: "all", flowDoc: "psa", tree: "hell", treeNode: null, trail: [], mapSel: null, studyDoc: "psa", studyQ: "", studyLens: "all", studyKind: "all", wordTopic: "all", wordQ: "", wordKind: "all", logicDoc: "psa", lxxTopic: "all", r9cat: "all", tulipPetal: "T", tulipTone: 0 };
 
   const store = {
     get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
@@ -152,7 +152,8 @@
       case "overview":
         body = `<div class="prose"><p class="lede" style="color:var(--ink)">${esc(d.summary)}</p><h3>Core claims</h3><ul class="claims">${d.claims.map(c => `<li>${esc(c)}</li>`).join("")}</ul>
           <h3>At a glance</h3>
-          <div class="pills"><span class="pill">${d.tensions.length} tensions</span><span class="pill">${d.fathers.length} fathers</span><span class="pill">${d.influences.length} outside influences</span><span class="pill">${d.responses.length} alternative answers</span></div></div>`;
+          <div class="pills"><span class="pill">${d.tensions.length} tensions</span><span class="pill">${d.fathers.length} fathers</span><span class="pill">${d.influences.length} outside influences</span><span class="pill">${d.responses.length} alternative answers</span></div>
+          ${["arminian", "sovereignty", "reformation"].includes(d.id) ? `<h3>Related studies</h3><div class="rel-grid"><button type="button" class="card rel" data-rel="tulip"><span class="eyebrow">Calvinism</span><b>Augustine, Calvin and the Origins of TULIP</b><span class="muted">Where the five points came from</span></button><button type="button" class="card rel" data-rel="rom9"><span class="eyebrow">Calvinism</span><b>15 Inconsistencies in a Calvinist Sermon</b><span class="muted">A review of a sermon on Romans 9:6–13</span></button></div>` : ""}</div>`;
         break;
       case "history":
         body = `<div class="prose"><p>${esc(d.roots)}</p><h3>Formation timeline</h3><ol class="mini-tl">${d.timeline.map(e => `<li><b>${e.y}</b>${esc(e.t)}</li>`).join("")}</ol></div>`;
@@ -495,6 +496,133 @@
     }).join("") : `<p class="muted">No words match. Clear the search or choose another source type.</p>`;
   }
 
+  /* ---------- Origins of TULIP ---------- */
+  function renderTulip() {
+    const Z = TC.tulip, sel = Z.petals.find(p => p.k === state.tulipPetal) || Z.petals[0];
+    const pc = { T: "#b23b3b", U: "#c07a1c", L: "#6a4fb3", I: "#2d6aa3", P: "#2f8f83" };
+    // tulip: five petals fanned on a stem, roots in the soil
+    const angles = [-56, -28, 0, 28, 56];
+    let tu = `<svg viewBox="0 0 420 470" class="tulip-svg" role="img" aria-label="A tulip whose five petals are the five points of TULIP, rooted in Augustine, Manichaeism and Pelagius">
+      <defs><linearGradient id="soil" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6b4a2f"/><stop offset="1" stop-color="#3b2717"/></linearGradient></defs>
+      <rect x="0" y="330" width="420" height="140" rx="18" fill="url(#soil)"/>
+      <path class="stem" d="M210 330 C206 280 214 230 210 190" stroke="#3f7a3a" stroke-width="7" fill="none" stroke-linecap="round"/>
+      <path class="leaf" d="M210 290 C170 270 150 240 152 215 C180 230 200 255 210 285Z" fill="#4f8f45"/>
+      <path class="leaf r" d="M211 270 C250 255 268 228 266 205 C240 220 220 240 211 265Z" fill="#5a9c4f"/>`;
+    Z.petals.forEach((p, i) => {
+      tu += `<g class="petal ${p.k === sel.k ? "on" : ""}" data-petal="${p.k}" tabindex="0" role="button" aria-label="${esc(p.name)}" style="--d:${i * 0.12}s" transform="rotate(${angles[i]} 210 190)">
+        <path d="M210 190 C170 150 172 70 210 34 C248 70 250 150 210 190Z" fill="${pc[p.k]}"/>
+        <text x="210" y="105" text-anchor="middle" font-size="30" font-weight="800" fill="#fff" transform="rotate(${-angles[i]} 210 105)">${p.k}</text></g>`;
+    });
+    const roots = [["Augustine", 210, 440, "M210 330 C210 370 212 400 210 425"], ["Manichaeism", 80, 420, "M208 335 C170 360 120 380 92 405"], ["Pelagius", 340, 420, "M212 335 C250 360 300 380 328 405"]];
+    roots.forEach(([n, x, y, d]) => tu += `<path class="root" d="${d}" stroke="#d9b98a" stroke-width="3" fill="none" stroke-linecap="round"/><text x="${x}" y="${y + 18}" text-anchor="middle" font-size="14" font-weight="800" fill="#f1dfc0">${n}</text>`);
+    tu += `<text x="210" y="356" text-anchor="middle" font-size="11" font-weight="700" letter-spacing="2" fill="#e8d3b0" opacity=".8">ROOTS, ACCORDING TO THIS STUDY</text></svg>`;
+
+    const strCol = { gnostic: "#6a4fb3", pelagian: "#c07a1c", main: "var(--accent)", arminian: "#2f8f83" };
+    // Augustine life strip
+    const AL = Z.augustineLife, x0 = 354, x1 = 430, X = y => 20 + (y - x0) / (x1 - x0) * 660;
+    let life = `<svg viewBox="0 0 700 124" class="life-svg" role="img" aria-label="Timeline of Augustine's life, with his Manichaean years shaded">
+      <rect x="${X(373)}" y="30" width="${X(383) - X(373)}" height="36" rx="8" fill="#6a4fb3" opacity=".22"/><text x="${(X(373) + X(383)) / 2}" y="24" text-anchor="middle" font-size="11" font-weight="800" fill="#6a4fb3">MANICHAEAN YEARS</text>
+      <line x1="20" y1="48" x2="680" y2="48" class="chart-line" stroke-width="2"/>`;
+    AL.forEach((e, i) => life += `<g class="life-dot" style="--d:${i * 0.08}s"><circle cx="${X(e.y)}" cy="48" r="7" fill="${e.y >= 373 && e.y < 384 ? "#6a4fb3" : "var(--gold)"}"/><text x="${X(e.y)}" y="${[78, 94, 110][i % 3]}" text-anchor="middle" font-size="12" font-weight="800" class="chart-ink">${e.y}</text></g>`);
+    life += `</svg>`;
+
+    const T2 = Z.twoViews;
+    const views2 = `<svg viewBox="0 0 640 230" class="views-svg" role="img" aria-label="Augustine, Calvin, Arminius and Wesley clustered in one system, far from the scriptural view">
+      <ellipse cx="170" cy="115" rx="150" ry="92" fill="#c07a1c" opacity=".1" stroke="#c07a1c" stroke-width="2" stroke-dasharray="6 6"/>
+      ${T2.left.who.map((w, i) => { const pos = [[120, 80], [215, 75], [115, 150], [215, 150]][i]; return `<g class="vdot" style="--d:${i * 0.1}s"><circle cx="${pos[0]}" cy="${pos[1]}" r="30" fill="var(--surface)" stroke="#c07a1c" stroke-width="2"/><text x="${pos[0]}" y="${pos[1] + 4}" text-anchor="middle" font-size="11" font-weight="800" class="chart-ink">${w}</text></g>`; }).join("")}
+      <path class="farline" d="M330 115 C400 70 450 160 510 115" stroke="var(--muted)" stroke-width="2" fill="none" stroke-dasharray="4 6"/>
+      <text x="420" y="82" text-anchor="middle" font-size="12" font-weight="700" class="chart-muted">far apart</text>
+      <circle cx="560" cy="115" r="62" fill="var(--accent)" opacity=".14" stroke="var(--accent)" stroke-width="2"/><text x="560" y="110" text-anchor="middle" font-size="14" font-weight="800" class="chart-ink">Scriptural</text><text x="560" y="128" text-anchor="middle" font-size="14" font-weight="800" class="chart-ink">view</text>
+    </svg>`;
+
+    // ingredients flask
+    const IG = Z.ingredients;
+    const flask = `<svg viewBox="0 0 360 300" class="flask-svg" role="img" aria-label="Three ingredients pouring into one flask labelled Calvinist meme complex">
+      ${IG.map((g, i) => { const x = [70, 180, 290][i]; return `<path class="pour" d="M${x} 20 C${x} 80 ${180 + (x - 180) * .3} 110 ${180 + (x - 180) * .15} 150" stroke="${g.c}" stroke-width="10" fill="none" stroke-linecap="round" style="--d:${i * 0.25}s"/><circle cx="${x}" cy="16" r="12" fill="${g.c}"/>`; }).join("")}
+      <path d="M140 140 L140 180 L95 265 C90 278 98 288 112 288 L248 288 C262 288 270 278 265 265 L220 180 L220 140Z" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/>
+      <path d="M118 238 L242 238 L262 268 C266 278 260 284 250 284 L110 284 C100 284 94 278 98 268Z" fill="url(#mix)"/>
+      <defs><linearGradient id="mix" x1="0" x2="1"><stop offset="0" stop-color="#6a4fb3"/><stop offset=".5" stop-color="#c07a1c"/><stop offset="1" stop-color="#2d6aa3"/></linearGradient></defs>
+      <circle class="bub" cx="160" cy="262" r="5" fill="#fff" opacity=".7"/><circle class="bub b2" cx="200" cy="270" r="4" fill="#fff" opacity=".7"/><circle class="bub b3" cx="180" cy="258" r="3" fill="#fff" opacity=".7"/>
+    </svg>`;
+
+    const tone = state.tulipTone;
+    $("#v-tulip").innerHTML = `
+      <div class="tu-hero">
+        <div class="tu-hero-text"><div class="eyebrow">Calvinism · Origins</div><h1 class="r9-title">${esc(Z.title)}</h1><p class="lede">${esc(Z.lede)}</p>
+          <p class="muted">Tap a petal to see each point, where this study says it came from, how it fares against Scripture, and how a Calvinist answers.</p>
+          <p class="note" style="margin-top:10px">Adapted from your doc <a href="${Z.doc}" target="_blank" rel="noopener">${esc(Z.title)}</a>, with historians' notes and Calvinist responses added.</p></div>
+        <div class="tu-flower">${tu}</div>
+      </div>
+      <div class="card petal-card" style="--c:${pc[sel.k]}" aria-live="polite">
+        <div class="pc-head"><span class="pc-k">${sel.k}</span><div><h3>${esc(sel.name)}</h3><p>${esc(sel.def)}</p></div></div>
+        <div class="pc-grid">
+          <div><span class="lbl">Root, according to this study</span><p><b>${esc(sel.root)}.</b> ${esc(sel.rootNote)}</p></div>
+          <div><span class="lbl">Tested against Scripture</span><p>${esc(sel.test)}</p></div>
+          <div class="reply-d" style="border-left-color:var(--ok)"><span class="lbl" style="color:var(--ok)">How a Calvinist answers</span><p>${esc(sel.reply)}</p></div>
+        </div>
+        <div class="pc-nav">${Z.petals.map(p => `<button type="button" class="pc-dot" data-petal="${p.k}" aria-pressed="${p.k === sel.k}" style="--c:${pc[p.k]}">${p.k}</button>`).join("")}</div>
+      </div>
+
+      <div class="r9-sec"><div class="section-head"><div class="eyebrow">1 · The family tree</div><h2>From Augustine to TULIP</h2><p class="muted">Each step as this study sees it, with a historian's note.</p></div>
+        <div class="lineage">${Z.lineage.map((n, i) => `<div class="ln ${i % 2 ? "r" : "l"}" style="--c:${strCol[n.stream]}"><span class="ln-dot"></span><div class="ln-card card"><span class="ln-y">${esc(n.y)}</span><h3>${esc(n.who)}</h3><p>${esc(n.what)}</p><p class="muted ln-note">${esc(n.note)}</p></div></div>`).join("")}</div>
+        <div class="legend"><span><i style="background:#6a4fb3"></i>Manichaean stream</span><span><i style="background:#c07a1c"></i>Pelagian stream</span><span><i style="background:var(--accent)"></i>Augustinian–Reformed line</span><span><i style="background:#2f8f83"></i>Arminian branch</span></div></div>
+
+      <div class="r9-sec"><div class="quote-band"><div class="mono"><span>A</span><svg viewBox="0 0 60 20" aria-hidden="true"><path d="M2 10 H54 M46 3 L56 10 L46 17" stroke="currentColor" stroke-width="2.5" fill="none"/></svg><span>C</span></div>
+        <blockquote>“${esc(Z.calvinQuote.text)}”<cite>— ${esc(Z.calvinQuote.who)}</cite></blockquote></div></div>
+
+      <div class="r9-sec"><div class="section-head"><div class="eyebrow">2 · Two views of predestination</div><h2>The predestination of theology vs the predestination of Scripture</h2></div>
+        <div class="panel">${views2}</div>
+        <div class="r9-two" style="margin-top:14px"><div class="card" style="border-top:4px solid #c07a1c"><span class="lbl">${esc(T2.left.name)}</span><p><b>${esc(T2.left.def)}</b></p><p class="muted">${esc(T2.left.note)}</p></div>
+          <div class="card" style="border-top:4px solid var(--accent)"><span class="lbl">${esc(T2.right.name)}</span><p><b>${esc(T2.right.def)}</b></p><ul class="uses">${T2.right.uses.map(([r, t]) => `<li><span class="ref">${esc(r)}</span> ${esc(t)}</li>`).join("")}</ul></div></div></div>
+
+      <div class="r9-sec"><div class="section-head"><div class="eyebrow">3 · The recipe</div><h2>Three ingredients, one system</h2><p class="muted">This study's account of what Augustine mixed together, which Calvin later systematised.</p></div>
+        <div class="r9-two"><div class="panel">${flask}<p class="flask-lbl">The "Calvinist meme complex"</p></div>
+          <div class="stack" style="gap:10px">${IG.map((g, i) => `<div class="card ingr" style="--c:${g.c}"><span class="ingr-n">${i + 1}</span><div><h3>${esc(g.n)}</h3><p>${esc(g.d)}</p></div></div>`).join("")}
+            <p class="muted"><b>Imitation, not original thought.</b> Solzhenitsyn is cited as saying real intellectual thought is non-imitative; by that standard Augustine and Calvin imitated what came before them.</p></div></div></div>
+
+      <div class="r9-sec"><div class="section-head"><div class="eyebrow">4 · Limited atonement</div><h2>Same idea, nicer words</h2></div>
+        <div class="morph"><div class="bubble">“${esc(Z.atonement.a.say)}”<cite>— ${esc(Z.atonement.a.who)}</cite></div><div class="morph-arrow" aria-hidden="true">reworded<svg viewBox="0 0 80 20"><path d="M2 10 H72 M64 3 L76 10 L64 17" stroke="currentColor" stroke-width="2.5" fill="none"/></svg></div><div class="bubble">“${esc(Z.atonement.b.say)}”<cite>— ${esc(Z.atonement.b.who)}</cite></div></div>
+        <p class="r9-verdict" style="margin-top:12px">${esc(Z.atonement.point)}</p>
+        <div class="panel tone" style="margin-top:18px"><span class="lbl">Russell conjugation · tone dial</span><p>${esc(Z.russell.intro)}</p>
+          <div class="dial" role="radiogroup" aria-label="Choose a tone">${Z.russell.scale.map((t, i) => `<button type="button" role="radio" class="dial-b" data-tone="${i}" aria-checked="${tone === i}">${esc(t)}</button>`).join("")}<span class="dial-k" style="--t:${tone}"></span></div>
+          <p class="dial-out">Same meaning, three tones. Now apply it to Calvinism:</p>
+          <div class="pairs">${Z.russell.pair.map(pr => `<div class="pair"><span class="soft">${esc(pr.soft)}</span><span class="eq">=</span><span class="hard">${esc(pr.hard)}</span></div>`).join("")}</div>
+          <p>${esc(Z.russell.point)}</p><p class="muted"><b>The challenge:</b> ${esc(Z.russell.challenge)}</p></div></div>
+
+      <div class="r9-sec"><div class="section-head"><div class="eyebrow">5 · The role of Christ's death</div><h2>Blood and life: both are needed</h2></div>
+        <div class="arch">${Z.cross.map(c => `<div class="pillar ${c.role === "Death" ? "d" : "r"}"><span class="pill">${c.role}</span><b class="ref">${esc(c.ref)}</b><p>${esc(c.t)}</p></div>`).join("")}</div>
+        <div class="arch-top">Salvation</div>
+        <p class="muted" style="margin-top:12px;max-width:80ch">${esc(Z.crossNote)}</p></div>
+
+      <div class="r9-sec"><div class="section-head"><div class="eyebrow">6 · Arminius as a Calvinist</div><h2>From Remonstrance to TULIP</h2><p class="muted">The five points came out of a dispute between two kinds of Reformed theologians. In this view Calvinism and Arminianism sit together on one side, and the scriptural view is far from both.</p></div>
+        <div class="chev">${Z.dort.map((d, i) => `<div class="chev-i" style="--d:${i * 0.12}s"><b>${i + 1}</b><span>${esc(d)}</span></div>`).join("")}</div></div>
+
+      <div class="part2"><span class="eyebrow">Part 2</span><h2>The Link Between Calvinism and Gnosticism</h2><p class="lede">Raising this link draws strong objections. The study argues the connection runs three ways.</p></div>
+      <div class="cause-grid">${Z.links.map((l, i) => `<div class="card link3"><span class="big-n">${i + 1}</span><h3>${esc(l.k)}</h3><p>${esc(l.d)}</p></div>`).join("")}</div>
+
+      <div class="r9-sec"><div class="section-head"><div class="eyebrow">Augustine's road</div><h2>Nine years a Manichaean</h2></div>
+        <div class="panel scroll-x">${life}<ol class="life-list">${AL.map(e => `<li><b>${e.y}</b> ${esc(e.t)}</li>`).join("")}</ol></div></div>
+
+      <div class="r9-sec"><div class="section-head"><div class="eyebrow">Gnostic tenets in Calvinism</div><h2>How the tenets map, in this study's view</h2><p class="muted">Not a point-for-point match with one form of Gnosticism, but distinctives that trace back to, or cascade from, Gnostic tenets.</p></div>
+        <div class="bridge">${Z.tenets.map((t, i) => `<div class="br-row" style="--d:${i * 0.1}s"><div class="br-l">${esc(t.g)}</div><div class="br-line" aria-hidden="true"><span></span></div><div class="br-r">${esc(t.c)}</div></div>`).join("")}</div>
+        <p class="muted" style="margin-top:10px;max-width:80ch">Both Augustine and Pelagius started from a presumption about the human will rather than from Scripture, so in this view Calvinism is both more Gnostic and more Pelagian than other branches. Dualism is so tied to Manichaeism that "Manichaean" still means black-and-white thinking.</p></div>
+
+      <div class="r9-sec r9-two">
+        <div class="card chameleon"><span class="lbl">The chameleon strategy</span><p>${esc(Z.chameleon)}</p></div>
+        <div class="card"><span class="lbl">Practical gnosis</span><p class="quote">“${esc(Z.gnosis.text)}” <span class="ref">${esc(Z.gnosis.verse)}</span></p><p>${esc(Z.gnosis.case)}</p><p class="muted">${esc(Z.gnosis.point)}</p></div>
+      </div>
+
+      <div class="r9-sec"><div class="section-head"><div class="eyebrow">"You're just following Ken Wilson"</div><h2>Two fallacies in the usual reply</h2></div>
+        <div class="r9-two">${Z.fallacies.map(f => `<div class="card fallacy"><h3>${esc(f.n)}</h3><p>${esc(f.d)}</p></div>`).join("")}</div>
+        <p class="muted" style="margin-top:10px">Even if a single scholar were the source, naming him does not address the arguments. Ken Wilson's Oxford thesis on Augustine's shift was published as Augustine's Conversion from Traditional Free Choice to "Non-free Free Will" (2018).</p></div>
+
+      <div class="r9-sec"><div class="section-head"><div class="eyebrow">Fair play</div><h2>How Calvinists respond</h2></div>
+        <div class="grid">${Z.fairPlay.map(f => `<div class="card fair"><h3>${esc(f.h)}</h3><p style="-webkit-line-clamp:unset">${esc(f.t)}</p></div>`).join("")}</div></div>
+
+      <div class="r9-sec"><div class="section-head"><div class="eyebrow">Study questions</div><h2>Ten questions to work through</h2><p class="muted">Tap a card to flip it for a hint.</p></div>
+        <div class="flip-grid">${Z.questions.map((q, i) => `<button type="button" class="flip" data-flip aria-pressed="false"><span class="flip-in"><span class="flip-f"><b>${i + 1}</b>${esc(q.q)}</span><span class="flip-b"><b>Hint</b>${esc(q.hint)}</span></span></button>`).join("")}</div></div>`;
+  }
+
   /* ---------- Influence map ---------- */
   function renderMap() {
     const ik = Object.keys(I), lk = Object.keys(L);
@@ -662,7 +790,7 @@
   }
 
   /* ---------- Routing ---------- */
-  const VIEWS = { overview: renderOverview, explorer: renderExplorer, study: renderStudy, words: renderWords, logic: renderLogic, lxx: renderLxx, rom9: renderRom9, map: renderMap, timeline: renderTimeline, flow: renderFlow, matrix: renderMatrix, texts: renderTexts, spectrum: renderSpectrum, sources: renderSources };
+  const VIEWS = { overview: renderOverview, explorer: renderExplorer, study: renderStudy, words: renderWords, logic: renderLogic, lxx: renderLxx, rom9: renderRom9, tulip: renderTulip, map: renderMap, timeline: renderTimeline, flow: renderFlow, matrix: renderMatrix, texts: renderTexts, spectrum: renderSpectrum, sources: renderSources };
   let booted = false;
   function show(view, push) {
     const changed = state.view !== view;
@@ -681,7 +809,7 @@
   function openDoc(id, sub) { state.doc = id; state.sub = sub || "overview"; state.lensFilter = "all"; show("explorer", true); window.scrollTo({ top: 0 }); }
 
   document.addEventListener("click", e => {
-    const t = e.target.closest("[data-view],[data-open],[data-doc],[data-sub],[data-lens],[data-tl],[data-flow],[data-tree],[data-next],[data-reset],[data-cell],[data-node],.tl-dot,[data-scheme-btn],[data-sdoc],[data-expand],[data-wt],[data-study],[data-ldoc],[data-lt],[data-r9cat],[data-r9jump],[data-jump]");
+    const t = e.target.closest("[data-view],[data-open],[data-doc],[data-sub],[data-lens],[data-tl],[data-flow],[data-tree],[data-next],[data-reset],[data-cell],[data-node],.tl-dot,[data-scheme-btn],[data-sdoc],[data-expand],[data-wt],[data-study],[data-ldoc],[data-lt],[data-r9cat],[data-r9jump],[data-jump],[data-petal],[data-tone],[data-flip],[data-rel]");
     if (!t) return;
     const ds = t.dataset;
     if (ds.view) show(ds.view, true);
@@ -704,6 +832,10 @@
     else if (ds.sdoc) { state.studyDoc = ds.sdoc; state.studyQ = ""; state.studyLens = "all"; renderStudy(); }
     else if (ds.study) { state.studyDoc = ds.study; state.studyQ = ""; state.studyLens = "all"; show("study", true); window.scrollTo({ top: 0 }); }
     else if (ds.expand) document.querySelectorAll("#study-list details").forEach(x => x.open = ds.expand === "1");
+    else if (ds.petal) { state.tulipPetal = ds.petal; renderTulip(); document.querySelector(".petal-card")?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
+    else if (ds.tone) { state.tulipTone = +ds.tone; document.querySelectorAll(".dial-b").forEach(b => b.setAttribute("aria-checked", String(+b.dataset.tone === state.tulipTone))); const k = document.querySelector(".dial-k"); if (k) k.style.setProperty("--t", state.tulipTone); }
+    else if ("flip" in ds) { t.setAttribute("aria-pressed", String(t.getAttribute("aria-pressed") !== "true")); }
+    else if (ds.rel) show(ds.rel, true);
     else if (ds.lt) { state.lxxTopic = ds.lt; renderLxx(); }
     else if (ds.r9cat) { state.r9cat = ds.r9cat; renderRom9(); document.querySelector("#v-rom9 .r9-sec:nth-of-type(5)")?.scrollIntoView({ behavior: "smooth" }); }
     else if (ds.r9jump) { state.r9cat = "all"; renderRom9(); const el = document.getElementById("pt-" + ds.r9jump); if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1500); } }
@@ -713,7 +845,7 @@
   });
   document.addEventListener("keydown", e => {
     const n = e.target.closest && e.target.closest("[data-node]");
-    const r = e.target.closest && e.target.closest("[data-r9jump]");
+    const r = e.target.closest && e.target.closest("[data-r9jump],[data-petal]");
     if (r && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); r.dispatchEvent(new MouseEvent("click", { bubbles: true })); return; }
     if (n && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); n.dispatchEvent(new MouseEvent("click", { bubbles: true })); }
   });

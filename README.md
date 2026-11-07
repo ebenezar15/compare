@@ -21,6 +21,7 @@ An interactive study app that examines ten Western doctrines — Western Evangel
 | Word studies | 106 Greek, Hebrew and Aramaic words often read through legal, evangelical or Calvinist frameworks, such as kolasis, aiōnios, hilastērion, kipper, nasa' 'awon, dakka', ḥaphets, dikaioō, logizomai, pistis, kosmos, pas, eklektos, proorizō, hyper/anti, metanoia, euangelion, basileia, genea and harpazō. Each has its root, both readings, an evidence trail (451 sources in total: classical Greek, Septuagint, Second Temple, Dead Sea Scrolls, rabbinic, papyri and inscriptions, church fathers, lexicons, scholarship) marked by which reading each supports, and a balanced verdict. Opens with a textual study of Isaiah 53:10 comparing the Masoretic text ('crush'), Qumran, the Septuagint ('cleanse him from his wound'), the Targum, the Vulgate and the KJV |
 | Hebrew vs Greek | 13 textual studies where the Septuagint and the Hebrew (Masoretic) text differ: Isaiah 53:10, Psalm 40:6, Amos 9:12, Habakkuk 2:4, Deuteronomy 32:8, Psalm 2:9, Hosea 13:14, Isaiah 45:23, Isaiah 61:1, Jeremiah 31:32, Isaiah 7:14, Psalm 8:5 and Proverbs 3:34. Each has the differing words highlighted, the witnesses in their original languages, the cause of the difference, which reading the New Testament quotes, what is at stake for each doctrine, and a verdict. Opens with a text-transmission timeline and the five ways a verse can change |
 | Romans 9 review | An illustrated version of the review "15 Inconsistencies in a Calvinist Sermon on Romans 9:6–13": a countdown ring, a diagram of the either/or framing, the statement-of-faith triangle, a map of the Old Testament texts Romans 9 quotes, the "believe for yourself" loop, a what-if grid, and the 15 points with a short Calvinist answer to each |
+| Origins of TULIP | An illustrated version of the study "Augustine, Calvin and the Origins of TULIP" and "The Link Between Calvinism and Gnosticism": a blooming tulip whose petals open each point (with its claimed root, a test against Scripture and a Calvinist answer), a family tree from Augustine to TULIP with historians' notes, the two views of predestination, a three-ingredient flask, a Russell-conjugation tone dial, the death-and-resurrection arch, the Remonstrance-to-TULIP chevrons, Augustine's Manichaean years, a tenet bridge, fair-play responses and flip-card study questions |
 | Influence map | Network map: influences → doctrines → challenging lenses |
 | Timeline | About 100 dated events from AD 135 to 2019, with filters |
 | Flowcharts | Each doctrine's logic chain beside the alternative chain, plus a "Pathfinder" decision tree |
@@ -31,7 +32,7 @@ An interactive study app that examines ten Western doctrines — Western Evangel
 
 ## Design and motion
 
-- **Sidebar navigation** groups the 16 views into Explore, Language, Reason, See it and Check, with icons. On phones it becomes a slide-out drawer.
+- **Sidebar navigation** groups the views into Explore, Language, Reason, Calvinism, See it and Check, with icons. On phones it becomes a slide-out drawer.
 - **Search everything:** press Ctrl K (⌘ K on Mac) or / to search doctrines, deep-study texts, words, Hebrew vs Greek verses, fallacies, strawmen, Romans 9 points and contested texts, then jump straight to the result.
 - **Motion:** an animated constellation hero, view transitions, staggered entrances, diagram lines that draw themselves, numbers that count up, bars that grow, a cursor spotlight on cards, a reading-progress bar and a back-to-top button. Motion switches off when the device asks for reduced motion.
 
@@ -45,4 +46,4 @@ It's a static site with no build step. The interface layer is `css/redesign.css`
 python3 -m http.server 8000
 ```
 
-Content lives in `js/data.js`, the deep study in `js/study-1.js` to `js/study-3.js`, the word studies in `js/words.js` to `js/words-4.js`, the textual studies in `js/isaiah.js` and `js/lxx.js`, the Romans 9 review in `js/romans9.js`, and the logic and fallacy analysis in `js/logic.js`, so you can add doctrines, lenses, texts or sources there.
+Content lives in `js/data.js`, the deep study in `js/study-1.js` to `js/study-3.js`, the word studies in `js/words.js` to `js/words-4.js`, the textual studies in `js/isaiah.js` and `js/lxx.js`, the Romans 9 review in `js/romans9.js`, the TULIP study in `js/tulip.js`, and the logic and fallacy analysis in `js/logic.js`, so you can add doctrines, lenses, texts or sources there.

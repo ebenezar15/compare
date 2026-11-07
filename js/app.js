@@ -117,7 +117,7 @@
       <div class="stack">
         <div class="section-head"><div class="eyebrow">The doctrines examined</div><h2>Pick a doctrine to open its dossier</h2></div>
         <div class="grid">${D.map(d => `
-          <button class="card" data-open="${d.id}" type="button">
+          <button class="card doc-card" data-open="${d.id}" type="button" style="--c:${DC[d.id]}">
             <span class="fam">${esc(d.family)} · from ${d.span[0]}</span>
             <h3><span class="lens-dot" style="background:${DC[d.id]}"></span>${esc(d.name)}</h3>
             <p>${esc(d.summary)}</p>
@@ -663,12 +663,20 @@
 
   /* ---------- Routing ---------- */
   const VIEWS = { overview: renderOverview, explorer: renderExplorer, study: renderStudy, words: renderWords, logic: renderLogic, lxx: renderLxx, rom9: renderRom9, map: renderMap, timeline: renderTimeline, flow: renderFlow, matrix: renderMatrix, texts: renderTexts, spectrum: renderSpectrum, sources: renderSources };
+  let booted = false;
   function show(view, push) {
-    state.view = view;
-    document.querySelectorAll(".view").forEach(v => v.hidden = v.id !== "v-" + view);
-    document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.view === view));
-    VIEWS[view]();
-    if (push) { try { history.replaceState(null, "", "#" + (view === "explorer" ? state.doc : view)); } catch (e) { /* ignore */ } }
+    const changed = state.view !== view;
+    const run = () => {
+      state.view = view;
+      document.querySelectorAll(".view").forEach(v => v.hidden = v.id !== "v-" + view);
+      document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.view === view));
+      VIEWS[view]();
+      if (changed && booted) window.scrollTo({ top: 0 });
+      if (push) { try { history.replaceState(null, "", "#" + (view === "explorer" ? state.doc : view)); } catch (e) { /* ignore */ } }
+      document.dispatchEvent(new CustomEvent("tc:view", { detail: view }));
+    };
+    const calm = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (booted && changed && document.startViewTransition && !calm) document.startViewTransition(run); else run();
   }
   function openDoc(id, sub) { state.doc = id; state.sub = sub || "overview"; state.lensFilter = "all"; show("explorer", true); window.scrollTo({ top: 0 }); }
 
@@ -724,4 +732,6 @@
 
   const h = (location.hash || "").slice(1);
   if (byId[h]) { state.doc = h; show("explorer"); } else show(VIEWS[h] ? h : "overview");
+  booted = true;
+  window.TCApp = { show, openDoc, state, DC, SHORT, VIEWS };
 })();

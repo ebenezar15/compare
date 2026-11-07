@@ -29,11 +29,17 @@ An interactive study app that examines ten Western doctrines — Western Evangel
 | Spectrums | Where church fathers and modern theologians stand on four questions |
 | Sources | Scholarship and primary texts, including critics of the alternative views |
 
+## Design and motion
+
+- **Sidebar navigation** groups the 16 views into Explore, Language, Reason, See it and Check, with icons. On phones it becomes a slide-out drawer.
+- **Search everything:** press Ctrl K (⌘ K on Mac) or / to search doctrines, deep-study texts, words, Hebrew vs Greek verses, fallacies, strawmen, Romans 9 points and contested texts, then jump straight to the result.
+- **Motion:** an animated constellation hero, view transitions, staggered entrances, diagram lines that draw themselves, numbers that count up, bars that grow, a cursor spotlight on cards, a reading-progress bar and a back-to-top button. Motion switches off when the device asks for reduced motion.
+
 Seven colour schemes are available from the swatches in the header. The schemes are Follow device, Vellum, Jordan, Olive, Nave, Icon and Ember. The app uses Avenir Next, falling back to Nunito Sans where Avenir Next isn't installed.
 
 ## Run
 
-It's a static site with no build step. Open `index.html` in a browser, or serve the folder:
+It's a static site with no build step. The interface layer is `css/redesign.css` and `js/ui.js`. Open `index.html` in a browser, or serve the folder:
 
 ```
 python3 -m http.server 8000

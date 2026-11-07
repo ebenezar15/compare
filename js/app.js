@@ -14,7 +14,7 @@
     sola: "Sola Scriptura", arminian: "Arminian-Wesleyan", progressive: "Progressive Sanct.", sovereignty: "Sovereignty in Suffering",
     hell: "Traditional Hell", futurism: "Futurism" };
 
-  const state = { view: "overview", doc: "psa", sub: "overview", lensFilter: "all", tlFilter: "all", flowDoc: "psa", tree: "hell", treeNode: null, trail: [], mapSel: null, studyDoc: "psa", studyQ: "", studyLens: "all", studyKind: "all", wordTopic: "all", wordQ: "", wordKind: "all", logicDoc: "psa" };
+  const state = { view: "overview", doc: "psa", sub: "overview", lensFilter: "all", tlFilter: "all", flowDoc: "psa", tree: "hell", treeNode: null, trail: [], mapSel: null, studyDoc: "psa", studyQ: "", studyLens: "all", studyKind: "all", wordTopic: "all", wordQ: "", wordKind: "all", logicDoc: "psa", lxxTopic: "all", r9cat: "all" };
 
   const store = {
     get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
@@ -308,7 +308,7 @@
       <div class="searchbar" style="margin-top:12px"><input id="wq" type="search" placeholder="Search words, sources or verses, e.g. Josephus, Septuagint, Romans 3" aria-label="Search word studies" value="${esc(state.wordQ)}">
         <select id="wkind" aria-label="Filter by kind of source"><option value="all">All kinds of source</option>${kinds.map(k => `<option value="${esc(k)}" ${state.wordKind === k ? "selected" : ""}>${esc(k)}</option>`).join("")}</select></div>
       <div class="filter-row"><button class="chip" type="button" data-wt="all" aria-pressed="${state.wordTopic === "all"}">All topics</button>${topics.map(t => `<button class="chip" type="button" data-wt="${t}" aria-pressed="${state.wordTopic === t}"><span class="lens-dot" style="background:${DC[t]}"></span>${esc(SHORT[t])}</button>`).join("")}</div>
-      ${isaiahPanel()}
+      <div class="card" style="border:2px solid var(--accent);margin-bottom:14px"><span class="eyebrow">Textual studies</span><h3>Hebrew vs Greek: Isaiah 53:10 and ${TC.lxx.length - 1} more key verses</h3><p style="-webkit-line-clamp:unset">Where the Septuagint and the Hebrew differ, which one the New Testament quotes, and why.</p><div><button class="ans" type="button" data-view="lxx">Open the textual studies</button></div></div>
       <div id="word-list" class="stack" style="gap:14px"></div>
       <div class="section-head" style="margin-top:36px"><div class="eyebrow">Check it yourself</div><h2>Lexicons, primary texts and studies</h2></div>
       <div class="panel"><ul class="lib">${TC.wordLibrary.map(r => `<li><a href="${esc(r.u)}" target="_blank" rel="noopener">${esc(r.t)}</a><span class="muted"> — ${esc(r.d)}</span></li>`).join("")}</ul>
@@ -317,11 +317,16 @@
     $("#wq").addEventListener("input", e => { state.wordQ = e.target.value; drawWords(); });
     $("#wkind").addEventListener("change", e => { state.wordKind = e.target.value; drawWords(); });
   }
-  function isaiahPanel() {
-    const z = TC.isaiah, sl = { alt: "Supports 'cleanse'", trad: "Supports 'crush'" };
-    const blk = (title, arr, cls) => `<div class="iz-col ${cls}"><h4>${title}</h4>${arr.map(x => `<div><b>${esc(x.h)}</b><p>${esc(x.t)}</p></div>`).join("")}</div>`;
-    return `<details class="card isaiah" id="isaiah" open>
-      <summary><span class="eyebrow">Textual study</span><h2>${esc(z.title)}</h2><p class="muted">${esc(z.intro)}</p></summary>
+  const markDiff = (t, cls) => esc(t).replace(/\[([^\]]+)\]/g, `<mark class="${cls}">$1</mark>`);
+  function textStudy(z, open) {
+    const sl = { alt: "Supports the Greek reading", trad: "Supports the Hebrew reading", ctx: "Context", both: "Holds both" };
+    const blk = (title, arr, cls) => arr && arr.length ? `<div class="iz-col ${cls}"><h4>${title}</h4>${arr.map(x => `<div><b>${esc(x.h)}</b><p>${esc(x.t)}</p></div>`).join("")}</div>` : "";
+    const c = TC.lxxCauses[z.cause];
+    return `<details class="card isaiah" id="ts-${z.id}" ${open ? "open" : ""}>
+      <summary><div class="st-top"><span class="eyebrow">${esc(z.ref)}</span><span class="pill cause">${esc(c.name)}</span><span class="pill nt">New Testament quotes: ${esc(z.nt)}</span></div>
+        <h2>${esc(z.title)}</h2>
+        <div class="diff"><div class="diff-row heb"><span class="lbl">Hebrew</span><p>${markDiff(z.diff.mt, "mh")}</p></div><div class="diff-row grk"><span class="lbl">Greek</span><p>${markDiff(z.diff.lxx, "mg")}</p></div></div>
+        <p class="muted">${esc(z.intro)}</p></summary>
       <div class="st-body">
         <div class="wit-grid">${z.witnesses.map(w => `<div class="wit ${w.side}">
           <div class="ev-top"><b>${esc(w.name)}</b><span class="evside ${w.side}">${sl[w.side]}</span></div>
@@ -330,11 +335,138 @@
           ${w.tr ? `<p class="wit-tr">${esc(w.tr)}</p>` : ""}${w.en ? `<p class="wit-en">“${esc(w.en)}”</p>` : ""}
           <p class="muted">${esc(w.note)}</p></div>`).join("")}</div>
         ${blk("How the difference arose", z.how, "")}
-        <div class="iz-two">${blk("Why most translations follow 'crush'", z.why, "trad")}${blk("Why the 'cleanse' reading still matters", z.keep, "alt")}</div>
+        <div class="iz-two">${blk(z.whyLabel || "What is at stake in the debates", z.why, "trad")}${blk(z.keepLabel || "", z.keep, "alt")}</div>
         <div class="st-sec reply"><span class="lbl">What the original said, and what it means</span><p>${esc(z.verdict)}</p></div>
         <div><span class="lbl">Read the sources</span><ul class="lib">${z.links.map(l => `<li><a href="${esc(l.u)}" target="_blank" rel="noopener">${esc(l.t)}</a></li>`).join("")}</ul></div>
       </div></details>`;
   }
+
+  /* ---------- Hebrew vs Greek ---------- */
+  function renderLxx() {
+    const causeCount = {}; TC.lxx.forEach(z => causeCount[z.cause] = (causeCount[z.cause] || 0) + 1);
+    const glyph = { consonants: "תרעם → ?", vorlage: "📜 4Q", interpretive: "✎", greekcopy: "ΩΤΙΑ → ΣΩΜΑ", letters: "ד ↔ ר" };
+    const shown = TC.lxx.filter(z => state.lxxTopic === "all" || z.topics.includes(state.lxxTopic));
+    const topics = [...new Set(TC.lxx.flatMap(z => z.topics))];
+    const ntGreek = TC.lxx.filter(z => /^Greek/.test(z.nt)).length;
+    const tl = [["c. 750–550 BC", "Prophets and psalmists write in Hebrew", "heb"], ["c. 250–100 BC", "Septuagint: Hebrew Bible translated into Greek in Alexandria", "grk"], ["c. 250 BC – AD 68", "Dead Sea Scrolls copied at Qumran", "heb"], ["AD 40–100", "New Testament writers quote mostly the Greek", "grk"], ["AD 100–300", "Aramaic Targums read in synagogues", "heb"], ["c. AD 405", "Jerome's Vulgate follows the Hebrew", "lat"], ["AD 600–1000", "Masoretes add vowels; Aleppo (c. 930) and Leningrad (1008) codices", "heb"], ["1611", "KJV translates the Masoretic text", "lat"]];
+    $("#v-lxx").innerHTML = `<div class="section-head"><div class="eyebrow">Hebrew vs Greek</div><h2>Where the Septuagint and the Hebrew part ways</h2>
+      <p class="lede">The apostles read a Greek Old Testament, the Septuagint. Our English Old Testaments follow the later standard Hebrew (Masoretic) text. In some key verses the two say different things — and the New Testament often quotes the Greek.</p>
+      <div class="stats" style="margin-top:6px"><div class="stat"><b>${TC.lxx.length}</b><span>key verses compared</span></div><div class="stat"><b>${ntGreek}</b><span>where the New Testament quotes the Greek</span></div><div class="stat"><b>${Object.keys(TC.lxxCauses).length}</b><span>reasons texts differ</span></div></div></div>
+
+      <div class="panel"><span class="eyebrow">How the Old Testament reached us</span>
+        <ol class="ttl">${tl.map(([d, t, k]) => `<li class="${k}"><span class="d">${d}</span><span class="t">${t}</span></li>`).join("")}</ol>
+        <div class="legend"><span><i style="background:var(--gold)"></i>Hebrew and Aramaic</span><span><i style="background:var(--accent)"></i>Greek</span><span><i style="background:var(--muted)"></i>Latin and English</span></div></div>
+
+      <div class="section-head" style="margin-top:28px"><div class="eyebrow">Why they differ</div><h2>Five ways a verse can change</h2></div>
+      <div class="cause-grid">${Object.entries(TC.lxxCauses).map(([k, c]) => `<div class="card cause-card"><div class="glyph">${glyph[k]}</div><h3>${esc(c.name)}</h3><p>${esc(c.desc)}</p><span class="pill">${causeCount[k] || 0} ${(causeCount[k] || 0) === 1 ? "study" : "studies"}</span></div>`).join("")}</div>
+
+      <div class="section-head" style="margin-top:28px"><div class="eyebrow">At a glance</div><h2>All ${TC.lxx.length} verses</h2></div>
+      <div class="panel scroll-x"><table class="lxx-table"><thead><tr><th>Verse</th><th>Hebrew says</th><th>Greek says</th><th>New Testament quotes</th></tr></thead><tbody>
+        ${TC.lxx.map(z => `<tr><td><a href="#ts-${z.id}" data-jump="ts-${z.id}"><b>${esc(z.ref)}</b></a></td><td>${markDiff(z.diff.mt, "mh")}</td><td>${markDiff(z.diff.lxx, "mg")}</td><td>${esc(z.nt)}</td></tr>`).join("")}
+      </tbody></table></div>
+
+      <div class="filter-row" style="margin-top:24px"><button class="chip" type="button" data-lt="all" aria-pressed="${state.lxxTopic === "all"}">All topics</button>${topics.map(t => `<button class="chip" type="button" data-lt="${t}" aria-pressed="${state.lxxTopic === t}"><span class="lens-dot" style="background:${DC[t]}"></span>${esc(SHORT[t])}</button>`).join("")}</div>
+      <div class="stack" style="gap:16px">${shown.map((z, i) => textStudy(z, i === 0)).join("")}</div>`;
+  }
+
+  /* ---------- Romans 9 review ---------- */
+  function wrapSvg(text, x, y, max, size, anchor) {
+    const words = text.split(" "), lines = []; let cur = "";
+    words.forEach(w => { if ((cur + " " + w).trim().length > max) { lines.push(cur.trim()); cur = w; } else cur += " " + w; });
+    if (cur.trim()) lines.push(cur.trim());
+    return `<text x="${x}" y="${y - (lines.length - 1) * size * 0.6}" font-size="${size}" text-anchor="${anchor || "middle"}" class="chart-ink">${lines.map((l, i) => `<tspan x="${x}" dy="${i ? size * 1.2 : 0}">${esc(l)}</tspan>`).join("")}</text>`;
+  }
+  function renderRom9() {
+    const R = TC.rom9, C = R.cats;
+    const counts = {}; R.points.forEach(p => counts[p.cat] = (counts[p.cat] || 0) + 1);
+    // countdown ring
+    const ring = (() => {
+      const cx = 160, cy = 160, r = 120;
+      let s = `<svg viewBox="0 0 320 320" class="ring" role="img" aria-label="Countdown ring of the 15 points coloured by category">`;
+      s += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--line)" stroke-width="2" stroke-dasharray="4 6"/>`;
+      R.points.forEach((p, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / 15, x = cx + r * Math.cos(a), y = cy + r * Math.sin(a);
+        s += `<g class="ring-dot" data-r9jump="${p.n}" tabindex="0" role="button" aria-label="Point ${p.n}"><circle cx="${x}" cy="${y}" r="19" fill="${C[p.cat].color}"/><text x="${x}" y="${y + 5}" text-anchor="middle" font-size="14" font-weight="800" fill="#fff">${p.n}</text></g>`; });
+      s += `<text x="${cx}" y="${cy - 6}" text-anchor="middle" font-size="40" font-weight="800" class="chart-ink">15</text><text x="${cx}" y="${cy + 18}" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="1.5" class="chart-muted">CONCERNS</text></svg>`;
+      return s; })();
+    // venn for framing
+    const F = R.framing;
+    const venn = `<svg viewBox="0 0 560 300" class="venn" role="img" aria-label="Two overlapping circles: God chose me and I chose God, with the overlap showing both">
+      <circle cx="210" cy="160" r="120" fill="var(--accent)" opacity=".16" stroke="var(--accent)" stroke-width="2"/>
+      <circle cx="350" cy="160" r="120" fill="var(--gold)" opacity=".18" stroke="var(--gold)" stroke-width="2"/>
+      ${wrapSvg(F.a, 150, 160, 12, 17)}${wrapSvg(F.b, 410, 160, 12, 17)}
+      ${wrapSvg("Both", 280, 140, 10, 16)}${wrapSvg("God draws · we respond", 280, 172, 11, 12)}
+      <g><rect x="248" y="14" width="64" height="30" rx="15" fill="var(--warn)"/><text x="280" y="34" text-anchor="middle" font-size="14" font-weight="800" fill="#fff">OR?</text><line x1="250" y1="16" x2="310" y2="42" stroke="#fff" stroke-width="3"/></g>
+    </svg>`;
+    // statement triangle
+    const S = R.statement, P = [[300, 70], [110, 330], [490, 330]];
+    let tri = `<svg viewBox="0 0 600 400" style="overflow:visible" class="tri" role="img" aria-label="Three claims of the statement of faith at the corners of a triangle, with tensions on each side">`;
+    [[0, 1], [1, 2], [2, 0]].forEach(([a, b], i) => { const mx = (P[a][0] + P[b][0]) / 2, my = (P[a][1] + P[b][1]) / 2;
+      tri += `<line x1="${P[a][0]}" y1="${P[a][1]}" x2="${P[b][0]}" y2="${P[b][1]}" stroke="var(--warn)" stroke-width="3" stroke-dasharray="8 6"/><circle cx="${mx}" cy="${my}" r="15" fill="var(--warn)"/><text x="${mx}" y="${my + 5}" text-anchor="middle" font-size="14" font-weight="800" fill="#fff">${"ABC"[i]}</text>`; });
+    S.claims.forEach((c, i) => { const [x, y] = P[i]; tri += `<rect x="${x - 100}" y="${y - 52}" width="200" height="104" rx="12" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/><text x="${x - 86}" y="${y - 32}" font-size="11" font-weight="800" class="chart-muted">CLAIM ${i + 1}</text>${wrapSvg(c, x, y + 16, 26, 13)}`; });
+    tri += `<text x="300" y="250" text-anchor="middle" font-size="13" font-weight="800" fill="var(--warn)">Unresolved</text></svg>`;
+    // Romans 9 sources
+    const tagCol = { "Covenant line": "#2d6aa3", "Nations": "#c07a1c", "Mercy to a people": "#6a4fb3", "Vocation": "#2f8f83", "Inclusion": "#5a7a2e", "Remnant": "#8a5a3c", "Faith": "#b23b3b" };
+    const tagCount = {}; R.sources.forEach(s => tagCount[s.tag] = (tagCount[s.tag] || 0) + 1);
+    // loop
+    const L6 = R.loop, n = L6.length, lc = 220, lr = 150;
+    let loop = `<svg viewBox="0 0 440 440" class="loop" role="img" aria-label="A circular chain of six claims that leads back to its start"><defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--warn)"/></marker></defs>`;
+    const pts = L6.map((t, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n; return [lc + lr * Math.cos(a), lc + lr * Math.sin(a)]; });
+    pts.forEach((p, i) => { const q = pts[(i + 1) % n], dx = q[0] - p[0], dy = q[1] - p[1], d = Math.hypot(dx, dy), k = 62 / d;
+      loop += `<line x1="${p[0] + dx * k}" y1="${p[1] + dy * k}" x2="${q[0] - dx * k}" y2="${q[1] - dy * k}" stroke="var(--warn)" stroke-width="2" marker-end="url(#ah)"/>`; });
+    pts.forEach((p, i) => { loop += `<circle cx="${p[0]}" cy="${p[1]}" r="58" fill="var(--surface)" stroke="${i === 0 || i === n - 1 ? "var(--warn)" : "var(--line)"}" stroke-width="2"/>${wrapSvg(L6[i].replace(/"/g, ""), p[0], p[1] + 4, 15, 11)}`; });
+    loop += `<text x="${lc}" y="${lc - 4}" text-anchor="middle" font-size="13" font-weight="800" fill="var(--warn)">The loop</text><text x="${lc}" y="${lc + 14}" text-anchor="middle" font-size="11" class="chart-muted">no way in from outside</text></svg>`;
+    const shownPts = R.points.filter(p => state.r9cat === "all" || p.cat === state.r9cat);
+
+    $("#v-rom9").innerHTML = `
+      <div class="r9-hero">
+        <div><div class="eyebrow">Sermon review · Romans 9:6–13</div><h1 class="r9-title">${esc(R.title)}</h1><p class="lede">${esc(R.lede)}</p>
+          <div class="r9-legend">${Object.entries(C).map(([k, c]) => `<button class="r9-cat" type="button" data-r9cat="${k}" aria-pressed="${state.r9cat === k}" style="--c:${c.color}"><span class="sw2"></span><b>${counts[k] || 0}</b> ${esc(c.name)}</button>`).join("")}</div>
+          <p class="note" style="margin-top:14px">Adapted from your doc <a href="https://claude.ai/artifact/Rfngkr7p5RGaJToLZcPw3u" target="_blank" rel="noopener">${esc(R.title)}</a>. Each point adds a short Calvinist answer for fair comparison.</p></div>
+        ${ring}
+      </div>
+
+      <div class="r9-sec"><div class="section-head"><div class="eyebrow">1 · The framing</div><h2>"Does God choose me, or do I choose God?"</h2></div>
+        <div class="r9-two"><div class="panel">${venn}</div>
+          <div class="stack" style="gap:12px"><blockquote class="bubble">“${esc(F.quote)}”<cite>— the pastor</cite></blockquote><p>${esc(F.note)}</p>
+          <div><span class="lbl">The both/and in Scripture</span>${refs(F.bothRefs)}</div></div></div></div>
+
+      <div class="r9-sec"><div class="section-head"><div class="eyebrow">2 · The statement of faith</div><h2>Three claims that cannot all stand together</h2></div>
+        <div class="r9-two"><div class="panel">${tri}</div>
+          <div class="stack" style="gap:10px">${S.tensions.map((t, i) => `<div class="tension-row"><span class="tbadge">${"ABC"[i]}</span><p>${esc(t)}</p></div>`).join("")}
+            <p class="r9-verdict">${esc(S.verdict)}</p>
+            <div class="card" style="border-left:4px solid var(--gold)"><span class="lbl">What a consistent Calvinist statement would say</span><p>${esc(S.consistent)}</p></div>
+            <p class="muted">${esc(S.note)}</p></div></div></div>
+
+      <div class="r9-sec"><div class="section-head"><div class="eyebrow">3 · What Paul is quoting</div><h2>Romans 9's Old Testament sources: mostly nations and covenant lines</h2>
+        <p class="muted">Follow each quotation back to its source. Most describe peoples, family lines and vocations in history — not the eternal destiny of individuals.</p></div>
+        <div class="tagbar">${Object.entries(tagCount).map(([t, c]) => `<span style="flex:${c};background:${tagCol[t]}" title="${esc(t)}: ${c}">${esc(t)} ${c}</span>`).join("")}</div>
+        <div class="srcmap">${R.sources.map(s => `<div class="src-row"><span class="v">Rom ${esc(s.v)}</span><span class="arr" aria-hidden="true">→</span><div class="src-ot"><b>${esc(s.ot)}</b><span class="quote">${esc(s.says)}</span></div><div class="src-about"><span class="tagc" style="background:${tagCol[s.tag]}">${esc(s.tag)}</span><span>${esc(s.about)}</span></div></div>`).join("")}</div></div>
+
+      <div class="r9-sec"><div class="section-head"><div class="eyebrow">4 · The countdown</div><h2>${state.r9cat === "all" ? "All 15 points" : esc(C[state.r9cat].name)}</h2>
+        ${state.r9cat !== "all" ? `<button class="ghost" type="button" data-r9cat="all">Show all 15</button>` : ""}</div>
+        <div class="stack" style="gap:16px">${shownPts.map(p => `
+          <article class="pt" id="pt-${p.n}" style="--c:${C[p.cat].color}">
+            <div class="pt-num">${p.n}</div>
+            <div class="pt-body">
+              <div class="st-top"><span class="pill" style="background:${C[p.cat].color};color:#fff">${esc(C[p.cat].name)}</span></div>
+              <h3>${esc(p.title)}</h3>
+              <blockquote class="bubble">“${esc(p.quote)}”<cite>— the pastor</cite></blockquote>
+              <div><span class="lbl">The concern</span><p>${esc(p.concern)}</p>${refs(p.refs)}</div>
+              <details class="reply-d"><summary>How a Calvinist would answer</summary><p>${esc(p.reply)}</p></details>
+            </div></article>`).join("")}</div></div>
+
+      <div class="r9-sec"><div class="section-head"><div class="eyebrow">5 · Points 9 and 2 in one picture</div><h2>"Believe for yourself" inside a closed loop</h2></div>
+        <div class="r9-two"><div class="panel">${loop}</div>
+          <div class="card" style="border-left:4px solid var(--ok)"><span class="lbl">${esc(R.loopBreak.t)}</span><p>${esc(R.loopBreak.note)}</p>${refs(R.loopBreak.refs)}</div></div></div>
+
+      <div class="r9-sec"><div class="section-head"><div class="eyebrow">6 · "What if Calvinism is true?"</div><h2>Four outcomes</h2></div>
+        <div class="whatif">${R.whatIf.map(w => `<div class="wi ${w.cal.includes("false") ? "f" : "t"}"><span class="lbl">${esc(w.cal)} · ${esc(w.me)}</span><p>${esc(w.out)}</p></div>`).join("")}</div>
+        <p class="muted" style="margin-top:10px;max-width:75ch">In the Calvinist system, how one lives or believes makes no difference to the outcome: God regenerates some to believe, leaves everyone else without hope, and still condemns them for not believing.</p></div>
+
+      <div class="r9-sec"><div class="section-head"><div class="eyebrow">Summary</div><h2>Closing thoughts</h2></div>
+        <div class="grid">${R.summary.map(t => `<div class="card"><p style="-webkit-line-clamp:unset;color:var(--ink)">${esc(t)}</p></div>`).join("")}</div></div>`;
+  }
+
   function drawWords() {
     const q = state.wordQ.trim().toLowerCase();
     const sideLbl = { alt: "Alternative", trad: "Traditional", ctx: "Context", both: "Both" };
@@ -530,7 +662,7 @@
   }
 
   /* ---------- Routing ---------- */
-  const VIEWS = { overview: renderOverview, explorer: renderExplorer, study: renderStudy, words: renderWords, logic: renderLogic, map: renderMap, timeline: renderTimeline, flow: renderFlow, matrix: renderMatrix, texts: renderTexts, spectrum: renderSpectrum, sources: renderSources };
+  const VIEWS = { overview: renderOverview, explorer: renderExplorer, study: renderStudy, words: renderWords, logic: renderLogic, lxx: renderLxx, rom9: renderRom9, map: renderMap, timeline: renderTimeline, flow: renderFlow, matrix: renderMatrix, texts: renderTexts, spectrum: renderSpectrum, sources: renderSources };
   function show(view, push) {
     state.view = view;
     document.querySelectorAll(".view").forEach(v => v.hidden = v.id !== "v-" + view);
@@ -541,7 +673,7 @@
   function openDoc(id, sub) { state.doc = id; state.sub = sub || "overview"; state.lensFilter = "all"; show("explorer", true); window.scrollTo({ top: 0 }); }
 
   document.addEventListener("click", e => {
-    const t = e.target.closest("[data-view],[data-open],[data-doc],[data-sub],[data-lens],[data-tl],[data-flow],[data-tree],[data-next],[data-reset],[data-cell],[data-node],.tl-dot,[data-scheme-btn],[data-sdoc],[data-expand],[data-wt],[data-study],[data-ldoc]");
+    const t = e.target.closest("[data-view],[data-open],[data-doc],[data-sub],[data-lens],[data-tl],[data-flow],[data-tree],[data-next],[data-reset],[data-cell],[data-node],.tl-dot,[data-scheme-btn],[data-sdoc],[data-expand],[data-wt],[data-study],[data-ldoc],[data-lt],[data-r9cat],[data-r9jump],[data-jump]");
     if (!t) return;
     const ds = t.dataset;
     if (ds.view) show(ds.view, true);
@@ -564,11 +696,17 @@
     else if (ds.sdoc) { state.studyDoc = ds.sdoc; state.studyQ = ""; state.studyLens = "all"; renderStudy(); }
     else if (ds.study) { state.studyDoc = ds.study; state.studyQ = ""; state.studyLens = "all"; show("study", true); window.scrollTo({ top: 0 }); }
     else if (ds.expand) document.querySelectorAll("#study-list details").forEach(x => x.open = ds.expand === "1");
+    else if (ds.lt) { state.lxxTopic = ds.lt; renderLxx(); }
+    else if (ds.r9cat) { state.r9cat = ds.r9cat; renderRom9(); document.querySelector("#v-rom9 .r9-sec:nth-of-type(5)")?.scrollIntoView({ behavior: "smooth" }); }
+    else if (ds.r9jump) { state.r9cat = "all"; renderRom9(); const el = document.getElementById("pt-" + ds.r9jump); if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1500); } }
+    else if (ds.jump) { e.preventDefault(); state.lxxTopic = "all"; renderLxx(); const el = document.getElementById(ds.jump); if (el) { el.open = true; el.scrollIntoView({ behavior: "smooth", block: "start" }); } }
     else if (ds.ldoc) { state.logicDoc = ds.ldoc; renderLogic(); }
     else if (ds.wt) { state.wordTopic = ds.wt; renderWords(); }
   });
   document.addEventListener("keydown", e => {
     const n = e.target.closest && e.target.closest("[data-node]");
+    const r = e.target.closest && e.target.closest("[data-r9jump]");
+    if (r && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); r.dispatchEvent(new MouseEvent("click", { bubbles: true })); return; }
     if (n && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); n.dispatchEvent(new MouseEvent("click", { bubbles: true })); }
   });
 

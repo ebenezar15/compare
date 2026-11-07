@@ -1,6 +1,8 @@
 /* Textual study: Isaiah 53:10 — "crush" (Hebrew) or "cleanse" (Greek)? */
 TC.isaiah = {
   title: "Isaiah 53:10: crush or cleanse?",
+  whyLabel: "Why most translations follow 'crush'",
+  keepLabel: "Why the 'cleanse' reading still matters",
   intro: "Isaiah 53:10 is the central Old Testament text for penal substitution: 'It pleased the LORD to bruise him' (KJV). The Septuagint, the Greek Old Testament used by the apostles, reads instead that the Lord wills 'to cleanse him from his wound'. Here are the ancient witnesses side by side, the reason for the difference, why most translations follow the Hebrew, and what the original most likely said.",
   witnesses: [
     { name: "Masoretic Text (standard Hebrew)", date: "Consonants from antiquity; earliest complete manuscripts c. AD 930 (Aleppo) and 1008 (Leningrad)", lang: "Hebrew", text: "וַיהוָה חָפֵץ דַּכְּאוֹ הֶחֱלִי", rtl: true,
